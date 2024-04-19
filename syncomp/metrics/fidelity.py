@@ -1,5 +1,6 @@
 from scipy.stats import wasserstein_distance
 from scipy.spatial.distance import jensenshannon
+from scipy.spatial.distance import euclidean
 import numpy as np
 
 from syncomp.metrics.feature import (
@@ -62,6 +63,7 @@ def compare_fidelity_info(real_fidelity_info, syn_fidelity_info):
     
     wasserstein_distance_metric = {}
     jensenshannon_distance_metric = {}
+    euclidean_distance_metric = {}
 
     for feature_name in real_numerical_feature.keys():
         wasserstein_distance_metric[feature_name] = wasserstein_distance(real_numerical_feature[feature_name], syn_numerical_feature[feature_name])
@@ -71,4 +73,8 @@ def compare_fidelity_info(real_fidelity_info, syn_fidelity_info):
         syn_feature = string_conv_int(syn_categorical_feature[feature_name])
         jensenshannon_distance_metric[feature_name] = jensenshannon(real_feature, syn_feature)
 
-    return wasserstein_distance_metric, jensenshannon_distance_metric, real_corr_feature, syn_corr_feature
+
+    for corr_name in real_corr_feature.keys():
+        euclidean_distance_metric[corr_name] = euclidean(real_corr_feature[corr_name].fillna(0).values.flatten(), syn_corr_feature[corr_name].fillna(0).values.flatten())
+
+    return wasserstein_distance_metric, jensenshannon_distance_metric, euclidean_distance_metric
