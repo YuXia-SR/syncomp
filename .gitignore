@@ -256,3 +256,7 @@ dmypy.json
 .history
 
 # End of https://www.gitignore.io/api/macos,python,pycharm,jupyternotebooks,visualstudiocode
+
+results/*
+AutoDiffusion_code/*
+Real-data/*
