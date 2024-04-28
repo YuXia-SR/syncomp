@@ -77,14 +77,14 @@ def fillNa_cate(df):
         df[col].fillna(mode_values, inplace=True)
     return df
 
-def compute_correlation(df, continuous_columns, categorical_columns, sample_size=1000, exclude_columns=[]):
+def compute_correlation(df, continuous_columns, categorical_columns, sample_size=1000, exclude_columns=[], random_state=0):
 
     num_mat = pd.DataFrame(df[continuous_columns])
     cat_mat = pd.DataFrame(df[categorical_columns])
     
     sample_size = min(sample_size, len(num_mat))
-    num_mat = fillNa_cont(num_mat).sample(sample_size)
-    cat_mat = fillNa_cate(cat_mat).sample(sample_size)
+    num_mat = fillNa_cont(num_mat).sample(sample_size, random_state=random_state)
+    cat_mat = fillNa_cate(cat_mat).sample(sample_size, random_state=random_state)
     
     pearson_sub_matrix = np.corrcoef(num_mat, rowvar = False)
     pearson_sub_matrix = pd.DataFrame(pearson_sub_matrix, columns=continuous_columns, index=continuous_columns)

@@ -7,9 +7,9 @@ def load_data(mode='download', **kwargs):
         logging.info('Downloading data from python api')
         complete_dataset = get_data()
         merged_data = complete_dataset["transactions"].merge(
-            complete_dataset["products"], how="left"
+            complete_dataset["products"], how="inner"
         ).merge(
-            complete_dataset["demographics"], how="left"
+            complete_dataset["demographics"], how="inner"
         ).merge(
             complete_dataset["campaigns"], how="left"
         ).merge(
@@ -29,7 +29,7 @@ def load_data(mode='download', **kwargs):
     else:
         raise ValueError(f'Unknown mode: {mode}')
     
-def filter_data(df, min_visit_days=24, min_unique_customers=100, min_purchase_count=100):
+def filter_data(df, max_quantity=200, min_visit_days=24, min_unique_customers=100, min_purchase_count=100):
 
     logging.info('Cleaning data columns')
     start = df['transaction_timestamp'].min()
@@ -43,6 +43,9 @@ def filter_data(df, min_visit_days=24, min_unique_customers=100, min_purchase_co
 
     logging.info(f"Filtering out unvalid transaction")
     df = df[df.quantity > 0]
+
+    logging.info(f"Filtering out trx with extremely large quantity")
+    df = df[df.quantity <= max_quantity]
 
     logging.info(f"Filtering out customers visit store less than {min_visit_days} days")
     visit_days = df.groupby('household_id')['day'].nunique()
@@ -64,8 +67,17 @@ def filter_data(df, min_visit_days=24, min_unique_customers=100, min_purchase_co
     
     logging.info(f"Fill missing values for the redemption_day column")
     df['redemption_day'] = df['redemption_day'].fillna(0)
+
+    logging.info(f"Fill missing values for string columns")
+    string_columns = df.select_dtypes(include=['object']).columns
+    df[string_columns] = df[string_columns].astype(str).fillna('BLANK')
     
     return df.reset_index(drop=True)
+
+def compute_unit_price(df):
+    logging.info('Computing unit price')
+    df['unit_price'] = df['sales_value'] / df['quantity']
+    return df
 
 def store_data(df, path):
     if not path.endswith('.parquet'):

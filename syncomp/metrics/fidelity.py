@@ -51,15 +51,15 @@ def gather_fidelity_info_from_df(df, sample_size=1000, exclude_columns=[]):
         "correl_ratio": correl_ratio
     }
 
-    return numerical_feature, categorical_feature, corr_feature
+    return {'numerical': numerical_feature, 'categorical': categorical_feature, 'interaction': corr_feature}
 
 def string_conv_int(x):
     mapping = {v: i for i, v in enumerate(set(x))}
     return np.array(list(map(mapping.__getitem__, x)))
 
 def compare_fidelity_info(real_fidelity_info, syn_fidelity_info):
-    real_numerical_feature, real_categorical_feature, real_corr_feature = real_fidelity_info
-    syn_numerical_feature, syn_categorical_feature, syn_corr_feature = syn_fidelity_info
+    real_numerical_feature, real_categorical_feature, real_corr_feature = real_fidelity_info['numerical'], real_fidelity_info['categorical'], real_fidelity_info['interaction']
+    syn_numerical_feature, syn_categorical_feature, syn_corr_feature = syn_fidelity_info['numerical'], syn_fidelity_info['categorical'], syn_fidelity_info['interaction']
     
     wasserstein_distance_metric = {}
     jensenshannon_distance_metric = {}
@@ -77,4 +77,8 @@ def compare_fidelity_info(real_fidelity_info, syn_fidelity_info):
     for corr_name in real_corr_feature.keys():
         euclidean_distance_metric[corr_name] = euclidean(real_corr_feature[corr_name].fillna(0).values.flatten(), syn_corr_feature[corr_name].fillna(0).values.flatten())
 
-    return wasserstein_distance_metric, jensenshannon_distance_metric, euclidean_distance_metric
+    return {
+        'wasserstein_distance': wasserstein_distance_metric,
+        'jensenshannon_distance': jensenshannon_distance_metric,
+        'euclidean_distance': euclidean_distance_metric
+    }
