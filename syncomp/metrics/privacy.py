@@ -77,7 +77,7 @@ def evaluate_tapas_attack(
     classifier=RandomForestClassifier(n_estimators=10),
 ):
     
-    with open("../results/complete_dataset_filtered.json") as f:
+    with open(f"{dir}/complete_dataset_filtered.json") as f:
         schema = json.load(f)
     with tempfile.TemporaryDirectory() as tmpdir:
         train_df.to_csv(f"{tmpdir}/complete_dataset.csv", index=False)
@@ -96,19 +96,22 @@ def evaluate_tapas_attack(
         num_synthetic_records=num_training_records,
     )
     threat_model = tapas.threat_models.TargetedMIA(
-    attacker_knowledge_data=data_knowledge,
-    target_record=data.get_records([0]),
-    attacker_knowledge_generator=sdg_knowledge,
-    generate_pairs=True,
-    replace_target=True
+        attacker_knowledge_data=data_knowledge,
+        target_record=data.get_records([0]),
+        attacker_knowledge_generator=sdg_knowledge,
+        generate_pairs=True,
+        replace_target=True
     )
-    attacker = tapas.attacks.GroundhogAttack()
-    attacker = tapas.attacks.ShadowModellingAttack(
-    tapas.attacks.FeatureBasedSetClassifier(
-        tapas.attacks.NaiveSetFeature() + tapas.attacks.HistSetFeature() + tapas.attacks.CorrSetFeature(),
-        classifier
-    ),
-    label = "Groundhog"
+    # attacker = tapas.attacks.ShadowModellingAttack(
+    #     tapas.attacks.FeatureBasedSetClassifier(
+    #         tapas.attacks.NaiveSetFeature() + tapas.attacks.HistSetFeature() + tapas.attacks.CorrSetFeature(),
+    #         classifier
+    #     ),
+    #     label = "Groundhog"
+    # )
+
+    attacker = tapas.attacks.ClosestDistanceMIA(
+        criterion=("threshold", 0), label="Direct Lookup"
     )
     attacker.train(threat_model, num_samples=n_sample)
 

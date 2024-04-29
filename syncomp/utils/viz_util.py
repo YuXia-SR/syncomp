@@ -13,15 +13,15 @@ def plot_heatmap(data, title='', xlabel='', ylabel='', cmap='coolwarm', ax=None,
     
     return ax
 
-def plot_hist(real, syn, title='', xlabel='', ylabel='', ax=None, **kwargs):
+def plot_hist(real, syn, real_name='real', syn_name='syn', title='', xlabel='', ylabel='', ax=None, **kwargs):
     ax = ax or plt.gca()
     real_df = pd.DataFrame({
         'data': real,
-        'label': 'real'
+        'label': real_name
     })
     syn_df = pd.DataFrame({
         'data': syn,
-        'label': 'syn'
+        'label': syn_name
     })
     sns.histplot(data=pd.concat([real_df, syn_df]), x='data', hue='label', ax=ax, **kwargs)
     plt.title(title)

@@ -96,8 +96,13 @@ def main(
     Privacy metrics
     """
     logging.info('Compute privacy metrics')
-    # dcr = distance_closest_record(train_df, syn_df)
-    # tapas_attack = evaluate_tapas_attack(train_df, model, random_state, dir=dir, n_sample=sample_size)
+    dcr = distance_closest_record(train_df, syn_df)
+    # tapas_attack = evaluate_tapas_attack(train_df, model, random_state, dir=dir, n_sample=1000, num_training_records=10)
+
+    # with open(f'{dir}/{model}/{random_state}/privacy_metrics.pkl', 'wb') as f:
+    #     pickle.dump({'dcr': dcr, 'tapas': tapas_attack}, f)
+    with open(f'{dir}/{model}/{random_state}/privacy_metrics.json', 'w') as f:
+        json.dump({'dcr': dcr}, f, indent=4)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="A simple program with argparse")

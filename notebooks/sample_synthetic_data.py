@@ -4,9 +4,10 @@ import argparse
 import os
 
 from syncomp.utils.holdout_util import split_dataframe
-from syncomp.utils.train_util import train_autodiff
+from syncomp.utils.train_util import train_autodiff, train_ctgan
 
 logging.getLogger().setLevel(logging.INFO)
+logging.getLogger('rdt').setLevel(logging.WARNING)
 
 def main(
     model: str='AutoDiff',
@@ -19,8 +20,11 @@ def main(
     real_df = pd.read_csv(f'{dir}/complete_dataset_filtered.csv', converters={'household_size': str, 'kids_count': str})
     train_df, _, _ = split_dataframe(real_df, df_split_ratio, random_state)
 
-    logging.info('generate one syn_df using autodiff')
-    syn_df, _ = train_autodiff(train_df=train_df)
+    logging.info(f'generate one syn_df using {model}')
+    if model == 'AutoDiff':
+        syn_df, _ = train_autodiff(train_df=train_df)
+    elif model == 'CTGAN':
+        syn_df = train_ctgan(train_df=train_df, epochs=10)
     categorical_columns = real_df.select_dtypes(include=['object']).columns
     syn_df[categorical_columns] = syn_df[categorical_columns].astype(str)
     int_columns = real_df.select_dtypes(include=['int64']).columns

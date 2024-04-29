@@ -39,7 +39,7 @@ def filter_data(df, max_quantity=200, min_visit_days=24, min_unique_customers=10
     df = df.drop(columns=timestamp_columns)
     df = df.drop(columns=['coupon_upc'])
     id_columns = [column for column in df.columns if '_id' in column]
-    df[id_columns] = df[id_columns].astype('str')
+    df[id_columns] = df[id_columns].fillna(0).astype('int')
 
     logging.info(f"Filtering out unvalid transaction")
     df = df[df.quantity > 0]
@@ -66,7 +66,7 @@ def filter_data(df, max_quantity=200, min_visit_days=24, min_unique_customers=10
     logging.info(f"Number of trx: {len(df)}")
     
     logging.info(f"Fill missing values for the redemption_day column")
-    df['redemption_day'] = df['redemption_day'].fillna(0)
+    df['redemption_day'] = df['redemption_day'].fillna(0).astype('int')
 
     logging.info(f"Fill missing values for string columns")
     string_columns = df.select_dtypes(include=['object']).columns
@@ -75,12 +75,6 @@ def filter_data(df, max_quantity=200, min_visit_days=24, min_unique_customers=10
     return df.reset_index(drop=True)
 
 def compute_unit_price(df):
-    logging.info('Computing unit price')
     df['unit_price'] = df['sales_value'] / df['quantity']
     return df
-
-def store_data(df, path):
-    if not path.endswith('.parquet'):
-        path += '.parquet'
-    df.to_parquet(path, index=False)
 
