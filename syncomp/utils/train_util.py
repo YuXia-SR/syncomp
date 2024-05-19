@@ -2,6 +2,7 @@ import syncomp.models.process_GQ as pce
 import syncomp.models.autoencoder as ae
 import syncomp.models.diffusion as diff
 import syncomp.models.TabDDPMdiff as TabDiff
+from syncomp.models.ctab_gan_model.ctabgan import CTABGAN
 from ctgan import CTGAN
 import pandas as pd
 import time
@@ -74,3 +75,36 @@ def train_ctgan(
 
     return pd.concat(synthetic_data_record)
     
+
+def train_ctabgan(
+    train_df: pd.DataFrame,
+    class_dim=(256, 256, 256, 256),
+    random_dim=100,
+    num_channels=64,
+    l2scale=1e-5,
+    batch_size=500,
+    epochs=150
+):
+    categorical_columns = train_df.select_dtypes(include=['object']).columns
+    integer_columns = train_df.select_dtypes(include=['int64']).columns
+    synthesizer =  CTABGAN(
+        train_df=train_df,
+        categorical_columns=categorical_columns,
+        integer_columns=integer_columns,
+        class_dim=class_dim,
+        random_dim=random_dim,
+        num_channels=num_channels,
+        l2scale=l2scale,
+        batch_size=batch_size,
+        epochs=epochs
+    )
+    synthesizer.fit()
+    syn_df = synthesizer.generate_samples(len(train_df))
+    return syn_df
+
+
+# def train_tabddpm(
+#         train_df: pd.DataFrame,
+#         num_epochs: int=1000,
+#         batch_size: int=500,
+# ):

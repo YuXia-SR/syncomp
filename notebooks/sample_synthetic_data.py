@@ -4,7 +4,7 @@ import argparse
 import os
 
 from syncomp.utils.holdout_util import split_dataframe
-from syncomp.utils.train_util import train_autodiff, train_ctgan
+from syncomp.utils.train_util import train_autodiff, train_ctgan, train_ctabgan
 
 logging.getLogger().setLevel(logging.INFO)
 logging.getLogger('rdt').setLevel(logging.WARNING)
@@ -25,6 +25,8 @@ def main(
         syn_df, _ = train_autodiff(train_df=train_df)
     elif model == 'CTGAN':
         syn_df = train_ctgan(train_df=train_df, epochs=10)
+    elif model == 'CTABGAN':
+        syn_df = train_ctabgan(train_df=train_df)
     categorical_columns = real_df.select_dtypes(include=['object']).columns
     syn_df[categorical_columns] = syn_df[categorical_columns].astype(str)
     int_columns = real_df.select_dtypes(include=['int64']).columns

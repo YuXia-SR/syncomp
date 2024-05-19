@@ -8,21 +8,22 @@ import tempfile
 import json
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.cluster import KMeans
 
 def string_conv_int(x):
     mapping = {v: i for i, v in enumerate(set(x))}
     return np.array(list(map(mapping.__getitem__, x)))
 
-def distance_closest_record(real_df, syn_df, n_sample=1000, random_state=0):
-    def encode_integer(df):
-        string_columns = df.select_dtypes(include=['object', 'bool']).columns
+def encode_integer(df):
+    string_columns = df.select_dtypes(include=['object', 'bool']).columns
 
-        # Encode string columns as integers
-        for col in string_columns:
-            df[col] = string_conv_int(df[col])
+    # Encode string columns as integers
+    for col in string_columns:
+        df[col] = string_conv_int(df[col])
 
-        return df
+    return df
 
+def distance_closest_record(real_df, syn_df, n_sample=1000, random_state=0, n_clusters=10):
     real_df = real_df.sample(n_sample, random_state=random_state).fillna(0)
     syn_df = syn_df.fillna(0)
 
@@ -32,8 +33,31 @@ def distance_closest_record(real_df, syn_df, n_sample=1000, random_state=0):
     def compute_distance(df, row):
         distance = np.linalg.norm(df - row, axis=1)
         return distance.min()
-    
-    dcr = real_df.apply(lambda x: compute_distance(syn_df, x), axis=1)
+
+    kmeans_df1 = KMeans(n_clusters=n_clusters, random_state=42).fit(real_df)
+    cluster_centers_df1 = kmeans_df1.cluster_centers_
+
+    # Clustering df2
+    kmeans_df2 = KMeans(n_clusters=n_clusters, random_state=42).fit(syn_df)
+    cluster_centers_df2 = kmeans_df2.cluster_centers_
+
+    min_distance = np.inf
+    df1_index = 0
+    df2_index = 0
+    for i, center_df1 in enumerate(cluster_centers_df1):
+        for j, center_df2 in enumerate(cluster_centers_df2):
+            distance = np.linalg.norm(center_df1 - center_df2)
+            if distance < min_distance:
+                min_distance = distance
+                df1_index = i
+                df2_index = j
+
+    # Select the cluster centers corresponding to the minimum distance
+    df1_selected_cluster = real_df[kmeans_df1.labels_ == df1_index]
+    df2_selected_cluster = syn_df[kmeans_df2.labels_ == df2_index]
+
+    # Compute the distance between the selected cluster centers
+    dcr = df1_selected_cluster.apply(lambda x: compute_distance(df2_selected_cluster, x), axis=1)
 
     return dcr.min()
 
