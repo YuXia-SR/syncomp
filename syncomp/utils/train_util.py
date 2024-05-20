@@ -40,16 +40,13 @@ def train_autodiff(
     N = latent_features.shape[0] 
     P = latent_features.shape[1]
     
-    start_time = time.time()
     sample = diff.Euler_Maruyama_sampling(score, T, N, P, device)
-    end_time = time.time()
-    duration = end_time - start_time
 
     logging.info("Generating synthetic data")
     gen_output = ds[0](sample, ds[2], ds[3])
     syn_df = pce.convert_to_table(train_df, gen_output, threshold)
 
-    return syn_df, duration
+    return syn_df
 
 def train_ctgan(
     train_df: pd.DataFrame,
