@@ -50,27 +50,17 @@ def train_autodiff(
 
 def train_ctgan(
     train_df: pd.DataFrame,
-    train_batch_size: int=500,
     epochs: int=100,
     **kwargs
 ):
     # Names of the columns that are discrete
     discrete_columns = list(train_df.select_dtypes(include=['object', 'int']).columns)
 
-    synthetic_data_record = []
-    start_row = 0
-    end_row = start_row + train_batch_size
-    with tqdm.tqdm(total=len(train_df), desc="Sample synthetic data") as pbar:
-        while start_row < len(train_df):
-            ctgan = CTGAN(epochs=epochs, **kwargs)
-            ctgan.fit(train_df.iloc[start_row:end_row], discrete_columns)
-            start_row = end_row
-            end_row += train_batch_size
-            synthetic_data = ctgan.sample(train_batch_size)
-            synthetic_data_record.append(synthetic_data)
-            pbar.update(train_batch_size)
+    ctgan = CTGAN(epochs=epochs, **kwargs)
+    ctgan.fit(train_df, discrete_columns)
+    syn_df = ctgan.sample(len(train_df))
 
-    return pd.concat(synthetic_data_record)
+    return syn_df
     
 
 def train_ctabgan(
@@ -98,10 +88,3 @@ def train_ctabgan(
     synthesizer.fit()
     syn_df = synthesizer.generate_samples(len(train_df))
     return syn_df
-
-
-# def train_tabddpm(
-#         train_df: pd.DataFrame,
-#         num_epochs: int=1000,
-#         batch_size: int=500,
-# ):

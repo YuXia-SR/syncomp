@@ -2,6 +2,7 @@ import pandas as pd
 import logging
 import argparse
 import os
+from joblib import Parallel, delayed
 from tqdm import tqdm
 from syncomp.utils.data_util import CompleteJourneyDataset
 from syncomp.utils.holdout_util import split_dataframe
@@ -17,12 +18,40 @@ def format_infrequent_product_in_synthetic_data(df, infrequent_products_hierarch
 
     return df
 
+def train_func(category, train_df, train, customer_batch_size, infrequent_products_hierarchy, infrequent_products_weights):
+    filtered_train_df = train_df[train_df.product_category == category]
+
+    if filtered_train_df.household_id.nunique() > customer_batch_size:
+        unique_household_id = filtered_train_df.household_id.unique()
+        n_household_id = len(unique_household_id)
+
+        start_idx = 0
+        end_idx = customer_batch_size
+        filtered_syn_df = []
+        while end_idx <= n_household_id:
+            sample_household_id = unique_household_id[start_idx: end_idx]
+            sampled_filtered_train_df = train(filtered_train_df[filtered_train_df.household_id.isin(sample_household_id)])
+            if category == '-1':
+                sampled_filtered_train_df = format_infrequent_product_in_synthetic_data(sampled_filtered_train_df, infrequent_products_hierarchy, infrequent_products_weights)
+            filtered_syn_df.append(sampled_filtered_train_df)
+            start_idx = end_idx
+            end_idx += customer_batch_size
+
+        filtered_syn_df = pd.concat(filtered_syn_df)
+    else:
+        filtered_syn_df = train(filtered_train_df)
+        if category == '-1':
+            filtered_syn_df = format_infrequent_product_in_synthetic_data(filtered_syn_df, infrequent_products_hierarchy, infrequent_products_weights)
+    
+    return filtered_syn_df
+
 def main(
     model: str='AutoDiff',
     random_state: int=0,
     df_split_ratio: list=[0.4, 0.4, 0.2],
-    dir ='results',
-    household_id_unique_threshold=500
+    dir:str ='results',
+    customer_batch_size: int=500,
+    n_job: int=4,
 ):
     logging.info('args: model=%s, random_state=%s, df_split_ratio=%s', model, random_state, df_split_ratio)
     logging.info('read real df')
@@ -43,29 +72,10 @@ def main(
         train = train_ctabgan
 
     product_category_group = train_df['product_category'].unique()
-    for category in tqdm(product_category_group, desc='Generate synthetic data for each category'):
-        filtered_train_df = train_df[train_df.product_category == category]
-
-        if filtered_train_df.household_id.nunique() > household_id_unique_threshold:
-            unique_household_id = filtered_train_df.household_id.unique()
-            n_household_id = len(unique_household_id)
-
-            start_idx = 0
-            end_idx = household_id_unique_threshold
-            while end_idx <= n_household_id:
-                sample_household_id = unique_household_id[start_idx: end_idx]
-                sampled_filtered_train_df = train(filtered_train_df[filtered_train_df.household_id.isin(sample_household_id)])
-                filtered_syn_df = train(sampled_filtered_train_df)
-                if category == '-1':
-                    filtered_syn_df = format_infrequent_product_in_synthetic_data(filtered_syn_df, infrequent_products_hierarchy, infrequent_products_weights)
-                syn_df.append(filtered_syn_df)
-                start_idx = end_idx
-                end_idx += household_id_unique_threshold
-        else:
-            filtered_syn_df = train(filtered_train_df)
-            if category == '-1':
-                filtered_syn_df = format_infrequent_product_in_synthetic_data(filtered_syn_df, infrequent_products_hierarchy, infrequent_products_weights)
-            syn_df.append(filtered_syn_df)
+    syn_df = Parallel(n_jobs=n_job)(delayed(train_func)(
+        category, train_df, train, customer_batch_size, 
+        infrequent_products_hierarchy, infrequent_products_weights
+    ) for category in product_category_group)
 
     syn_df = pd.concat(syn_df)
 
@@ -84,6 +94,9 @@ if __name__ == '__main__':
     parser.add_argument('--random_state', type=int, help='Random state to split the real data', default=0)
     parser.add_argument('--df_split_ratio', type=float, nargs='+', help='Proportions to split the real data', default=[0.4, 0.4, 0.2])
     parser.add_argument('--dir', type=str, help='Directory to save the result', default='results')
+    parser.add_argument('--customer_batch_size', type=int, help='Number of unique customers in one training group', default=500)
+    parser.add_argument('--n_job', type=int, help='Number of simulation running in parallel', default=4)
+    
     args = parser.parse_args()
 
     main(args.model, args.random_state, args.df_split_ratio, args.dir)
