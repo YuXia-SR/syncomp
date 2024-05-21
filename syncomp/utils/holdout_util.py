@@ -1,5 +1,3 @@
-import pandas as pd
-
 def split_dataframe(df, proportions=[0.4, 0.4, 0.2], random_state=0, groupby=None):
 
     splits = []
