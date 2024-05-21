@@ -16,33 +16,20 @@ def format_infrequent_product_in_synthetic_data(df, infrequent_products_hierarch
     product_columns = product_hierarchy.columns
     df.loc[:, product_columns] = product_hierarchy
 
-    return df
+    return df.drop(columns=['product_id'])
 
-def train_func(category, train_df, train, customer_batch_size, infrequent_products_hierarchy, infrequent_products_weights):
-    filtered_train_df = train_df[train_df.product_category == category]
+def train_func(department, train_df, train, infrequent_products_hierarchy, infrequent_products_weights):
+    filtered_train_df = train_df[train_df.department == department]
 
-    if filtered_train_df.household_id.nunique() > customer_batch_size:
-        unique_household_id = filtered_train_df.household_id.unique()
-        n_household_id = len(unique_household_id)
+    unique_cols = [col for col in filtered_train_df.columns if filtered_train_df[col].nunique() == 1]
+    dropped_cols = filtered_train_df[unique_cols]
+    filtered_train_df_reduced = filtered_train_df.drop(columns=unique_cols)
+    logging.info(f"Training dataset for department {department}: {filtered_train_df_reduced.shape}")
+    filtered_syn_df_reduced = train(filtered_train_df_reduced)
+    filtered_syn_df = pd.concat([filtered_syn_df_reduced, dropped_cols], axis=-1)
+    if department == '-1':
+        filtered_syn_df = format_infrequent_product_in_synthetic_data(filtered_syn_df, infrequent_products_hierarchy, infrequent_products_weights)
 
-        start_idx = 0
-        end_idx = customer_batch_size
-        filtered_syn_df = []
-        while end_idx <= n_household_id:
-            sample_household_id = unique_household_id[start_idx: end_idx]
-            sampled_filtered_train_df = train(filtered_train_df[filtered_train_df.household_id.isin(sample_household_id)])
-            if category == '-1':
-                sampled_filtered_train_df = format_infrequent_product_in_synthetic_data(sampled_filtered_train_df, infrequent_products_hierarchy, infrequent_products_weights)
-            filtered_syn_df.append(sampled_filtered_train_df)
-            start_idx = end_idx
-            end_idx += customer_batch_size
-
-        filtered_syn_df = pd.concat(filtered_syn_df)
-    else:
-        filtered_syn_df = train(filtered_train_df)
-        if category == '-1':
-            filtered_syn_df = format_infrequent_product_in_synthetic_data(filtered_syn_df, infrequent_products_hierarchy, infrequent_products_weights)
-    
     return filtered_syn_df
 
 def main(
@@ -50,7 +37,6 @@ def main(
     random_state: int=0,
     df_split_ratio: list=[0.4, 0.4, 0.2],
     dir:str ='results',
-    customer_batch_size: int=500,
     n_job: int=4,
 ):
     logging.info('args: model=%s, random_state=%s, df_split_ratio=%s', model, random_state, df_split_ratio)
@@ -58,7 +44,7 @@ def main(
     cd = CompleteJourneyDataset()
     real_df = cd.run_preprocess()
     real_df_combined = cd.combine_product_with_few_transactions(real_df)
-    train_df, _, _ = split_dataframe(real_df_combined, df_split_ratio, random_state)
+    train_df, _, _ = split_dataframe(real_df_combined, df_split_ratio, random_state, groupby='department')
     infrequent_products_hierarchy = cd.infrequent_products_hierarchy
     infrequent_products_weights = infrequent_products_hierarchy['weights']
     infrequent_products_hierarchy = infrequent_products_hierarchy.drop(columns=['weights'])
@@ -71,11 +57,11 @@ def main(
     elif model == 'CTABGAN':
         train = train_ctabgan
 
-    product_category_group = train_df['product_category'].unique()
+    department_group = train_df['department'].unique()
     syn_df = Parallel(n_jobs=n_job)(delayed(train_func)(
-        category, train_df, train, customer_batch_size, 
+        department, train_df, train, 
         infrequent_products_hierarchy, infrequent_products_weights
-    ) for category in product_category_group)
+    ) for department in department_group)
 
     syn_df = pd.concat(syn_df)
 

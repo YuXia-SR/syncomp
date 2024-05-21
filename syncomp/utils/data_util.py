@@ -30,6 +30,7 @@ class CompleteJourneyDataset():
 
         return self
     
+    
     def drop_duplicate_product_id(self):
         """Assign same id to products with the same hierarchy information."""
         subset = list(self.products.columns.drop("product_id"))
@@ -73,6 +74,54 @@ class CompleteJourneyDataset():
         logging.info(
             "Use the same label for products with the same hierarchy information. Number of products are decreased to {}.".format(
                 len(products_no_duplicates)
+            )
+        )
+        return self
+    
+
+    def drop_duplicate_customer_id(self):
+        """Assign same id to customers with the same hierarchy information."""
+        subset = list(self.demographics.columns.drop("household_id"))
+
+        # standardize string values in datasets
+        string_column = self.demographics.select_dtypes(include=["object"]).columns
+        self.demographics[string_column] = self.demographics[
+            string_column
+        ].apply(lambda x: x.str.strip().str.lower().replace("\s+", " ", regex=True))
+
+        demographics_no_duplicates = self.demographics.drop_duplicates(
+            subset=subset
+        ).drop(columns=["household_id"])
+        demographics_no_duplicates.loc[:, "unique_household_id"] = np.arange(
+            len(demographics_no_duplicates)
+        )
+        self.demographics = self.demographics.merge(
+            demographics_no_duplicates, left_on=subset, right_on=subset, how="left"
+        )
+
+        self.transactions = self.transactions.merge(
+            self.demographics[["household_id", "unique_household_id"]],
+            on="household_id",
+        )
+
+        self.transactions = self.transactions.drop(
+            columns=["household_id"]
+        )
+        self.demographics = self.demographics.drop(columns=["household_id"])
+        self.transactions.rename(
+            columns={"unique_household_id": "household_id"}, inplace=True
+        )
+        self.transactions.household_id = self.transactions.household_id.astype('str') 
+        self.demographics = self.demographics.rename(
+            columns={"unique_household_id": "household_id"}
+        ).drop_duplicates()
+        self.demographics.household_id = self.demographics.household_id.astype('str')
+        self.demographics = self.demographics.fillna("None")
+        self.demographics.sort_values("household_id", inplace=True)
+
+        logging.info(
+            "Use the same label for customers with the same hierarchy information. Number of customers are decreased to {}.".format(
+                len(self.demographics)
             )
         )
         return self
@@ -176,6 +225,7 @@ class CompleteJourneyDataset():
         (
             self.filter_invalid_transactions()
             .drop_duplicate_product_id()
+            .drop_duplicate_customer_id()
             .add_pricing_columns()
             .filter_invalid_customers()
             .filter_large_transactions()

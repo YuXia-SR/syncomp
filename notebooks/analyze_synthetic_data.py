@@ -39,24 +39,24 @@ def main(
     """ 
     Fidelity metrics
     """
-    # logging.info('Compute fidelity metrics')
-    # train_fidelity_info = gather_fidelity_info_from_df(train_df, sample_size=sample_size, exclude_columns=['household_id', 'basket_id'])
-    # syn_fidelity_info = gather_fidelity_info_from_df(syn_df, sample_size=sample_size, exclude_columns=['household_id', 'basket_id'])
-    # holdout_fidelity_info = gather_fidelity_info_from_df(holdout_df, sample_size=sample_size, exclude_columns=['household_id', 'basket_id'])
+    logging.info('Compute fidelity metrics')
+    train_fidelity_info = gather_fidelity_info_from_df(train_df, sample_size=sample_size, exclude_columns=['household_id', 'basket_id'])
+    syn_fidelity_info = gather_fidelity_info_from_df(syn_df, sample_size=sample_size, exclude_columns=['household_id', 'basket_id'])
+    holdout_fidelity_info = gather_fidelity_info_from_df(holdout_df, sample_size=sample_size, exclude_columns=['household_id', 'basket_id'])
 
-    # fidelity_metrics_syn = compare_fidelity_info(train_fidelity_info, syn_fidelity_info)
-    # fidelity_metrics_holdout = compare_fidelity_info(train_fidelity_info, holdout_fidelity_info)
+    fidelity_metrics_syn = compare_fidelity_info(train_fidelity_info, syn_fidelity_info)
+    fidelity_metrics_holdout = compare_fidelity_info(train_fidelity_info, holdout_fidelity_info)
 
-    # fidelity_info = {
-    #     'train_df': train_fidelity_info,
-    #     'syn_df': syn_fidelity_info,
-    #     'holdout_df': holdout_fidelity_info
-    # }
-    # fidelity_metric = {'syn_df': fidelity_metrics_syn, 'holdout_df': fidelity_metrics_holdout}
-    # with open(f'{dir}/{model}/{random_state}/fidelity_info.pkl', 'wb') as f:
-    #     pickle.dump(fidelity_info, f)
-    # with open(f'{dir}/{model}/{random_state}/fidelity_metric.json', 'w') as f:
-    #     json.dump(fidelity_metric, f, indent=4)
+    fidelity_info = {
+        'train_df': train_fidelity_info,
+        'syn_df': syn_fidelity_info,
+        'holdout_df': holdout_fidelity_info
+    }
+    fidelity_metric = {'syn_df': fidelity_metrics_syn, 'holdout_df': fidelity_metrics_holdout}
+    with open(f'{dir}/{model}/{random_state}/fidelity_info.pkl', 'wb') as f:
+        pickle.dump(fidelity_info, f)
+    with open(f'{dir}/{model}/{random_state}/fidelity_metric.json', 'w') as f:
+        json.dump(fidelity_metric, f, indent=4)
 
     """
     Utility metrics
