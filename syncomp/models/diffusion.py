@@ -9,7 +9,6 @@ from torch.optim import Adam
 from torch.optim.lr_scheduler import OneCycleLR
 from scipy import integrate
 
-device = 'cuda'  #@param ['cuda', 'cpu'] {'type':'string'}
 torch.cuda.empty_cache()
 
 # f(x,t)
@@ -27,7 +26,6 @@ def diffusion_coeff(t, beta_1, beta_0):
     return diffusion
 
 def marginal_prob_mean(x, t, beta_1, beta_0):
-  #x = x.to(device)
   t = torch.tensor(t)
   log_mean_coeff = -0.25 * t ** 2 * (beta_1 - beta_0) - 0.5 * t * beta_0
   mean = torch.exp(log_mean_coeff)[:, None] * x
@@ -66,7 +64,7 @@ def compute_v(ll, alpha, beta):
   return v
 
 
-def loss_fn(model, Input_Data, T, eps=1e-5):
+def loss_fn(model, Input_Data, T, eps=1e-5, device='cpu'):
     N, input_dim = Input_Data.shape  
     loss_values = torch.empty(N)
     
@@ -132,7 +130,7 @@ class TabNetwork(nn.Module):
         return score_net
     
 def train_diffusion(latent_features, T, hidden_dims, converted_table_dim, eps, sigma, lr, \
-                    num_batches_per_epoch, maximum_learning_rate, weight_decay, n_epochs, batch_size):
+                    num_batches_per_epoch, maximum_learning_rate, weight_decay, n_epochs, batch_size, device='cpu'):
     
     ScoreNet = TabNetwork(hidden_dims, converted_table_dim) # Stasy Architecture
     ScoreNet_Parallel = torch.nn.DataParallel(ScoreNet)
@@ -155,17 +153,7 @@ def train_diffusion(latent_features, T, hidden_dims, converted_table_dim, eps, s
         batch_idx = random.choices(range(latent_features.shape[0]), k=batch_size)  ## Choose random indices 
         batch_X = latent_features[batch_idx,:]  
         
-        loss_values = loss_fn(ScoreNet_Parallel, batch_X, T, eps)
-        
-        #q_alpha = torch.tensor(alpha0 + torch.log( torch.tensor(1+0.0001718*epoch* (1-alpha0), dtype=torch.float32))).clamp_(max=1).to(device)
-        #q_beta = torch.tensor(beta0 + torch.log( torch.tensor(1+0.0001718*epoch* (1-beta0), dtype=torch.float32) )).clamp_(max=1).to(device)
-
-        #alpha = torch.quantile(loss_values, q_alpha)
-        #beta = torch.quantile(loss_values, q_beta)
-        #assert alpha <= beta
-        #v = compute_v(loss_values, alpha, beta)      
-        
-        #loss = torch.mean(v*loss_values)
+        loss_values = loss_fn(ScoreNet_Parallel, batch_X, T, eps, device)
         loss = torch.mean(loss_values)
       
         optimizer.zero_grad()
@@ -249,7 +237,7 @@ def from_flattened_numpy(x, shape):
   """Form a torch tensor with the given `shape` from a flattened numpy array `x`."""
   return torch.from_numpy(x.reshape(shape))
 
-def drift_fn(model, x, vec_t):
+def drift_fn(model, x, vec_t, device='cpu'):
     N, P = x.shape
     
     mean = marginal_prob_mean_fn(x, vec_t).to(device)

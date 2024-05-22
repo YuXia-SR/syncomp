@@ -6,7 +6,7 @@ from joblib import Parallel, delayed
 from tqdm import tqdm
 from syncomp.utils.data_util import CompleteJourneyDataset
 from syncomp.utils.holdout_util import split_dataframe
-from syncomp.utils.train_util import train_tabautodiff, train_ctgan, train_ctabgan
+from syncomp.utils.train_util import train_tabautodiff, train_ctgan, train_ctabgan, train_stasyautodiff
 
 def set_logging():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -58,6 +58,8 @@ def main(
     logging.info(f'generate one syn_df using {model}')
     if model == 'TabAutoDiff':
         train = train_tabautodiff
+    elif model == 'StasyAutoDiff':
+        train = train_stasyautodiff
     elif model == 'CTGAN':
         train = train_ctgan
     elif model == 'CTABGAN':
@@ -89,7 +91,7 @@ if __name__ == '__main__':
     parser.add_argument('--df_split_ratio', type=float, nargs='+', help='Proportions to split the real data', default=[0.4, 0.4, 0.2])
     parser.add_argument('--dir', type=str, help='Directory to save the result', default='results')
     parser.add_argument('--n_job', type=int, help='Number of simulation running in parallel', default=-1)
-    parser.add_argument('--device', type=str, help='Device to run the training', default='cuda')
+    parser.add_argument('--device', type=str, help='Device to run the training', default='cpu')
     
     args = parser.parse_args()
 

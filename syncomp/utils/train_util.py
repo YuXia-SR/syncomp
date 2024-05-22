@@ -11,7 +11,7 @@ def train_tabautodiff(
     train_df: pd.DataFrame,
     # Auto-encoder hyper-parameters 
     threshold = 0.01, # Threshold for mixed-type variables
-    n_epochs = 100, #@param {'type':'integer'}
+    n_epochs = 10000, #@param {'type':'integer'}
     eps = 1e-5, #@param {type:"number"}
     weight_decay = 1e-6, #@param {'type':'number'}
     maximum_learning_rate = 1e-2, #@param {'type':'number'}
@@ -20,7 +20,7 @@ def train_tabautodiff(
     num_layers = 3,
     batch_size = 50,
     # Diffusion hyper-parameters
-    diff_n_epochs = 100, #@param {'type':'integer'}
+    diff_n_epochs = 10000, #@param {'type':'integer'}
     sigma = 20,  #@param {'type':'integer'} 
     num_batches_per_epoch = 50, #@param {'type':'number'}
     T = 300,  #@param {'type':'integer'}
@@ -35,6 +35,47 @@ def train_tabautodiff(
     logging.info("Training Diffusion Model")
     score = TabDiff.train_diffusion(latent_features, T, eps, sigma, lr, \
                     num_batches_per_epoch, maximum_learning_rate, weight_decay, diff_n_epochs, batch_size, device)
+    N = latent_features.shape[0] 
+    P = latent_features.shape[1]
+    
+    sample = diff.Euler_Maruyama_sampling(score, T, N, P, device)
+
+    logging.info("Generating synthetic data")
+    gen_output = ds[0](sample, ds[2], ds[3])
+    syn_df = pce.convert_to_table(train_df, gen_output, threshold)
+
+    return syn_df
+
+
+def train_stasyautodiff(
+    train_df: pd.DataFrame,
+    # Auto-encoder hyper-parameters 
+    threshold = 0.01, # Threshold for mixed-type variables
+    n_epochs = 10000, #@param {'type':'integer'}
+    weight_decay = 1e-6, #@param {'type':'number'}
+    lr = 2e-4, #@param {'type':'number'}
+    hidden_size = 250,
+    num_layers = 3,
+    batch_size = 50,
+    # Diffusion hyper-parameters
+    diff_n_epochs = 10000, #@param {'type':'integer'}
+    sigma = 20,  #@param {'type':'integer'} 
+    num_batches_per_epoch = 50, #@param {'type':'number'}
+    T = 300,  #@param {'type':'integer'}
+    hidden_dims = (256, 512, 1024, 512, 256), #@param {type:"raw"}
+    maximum_learning_rate = 1e-2, #@param {'type':'number'}
+    eps = 1e-5, #@param {type:"number"}
+    device='cpu', #@param {'type':'string'},
+    **kwargs
+):  
+    
+    logging.info("Training Autoencoder")
+    ds = ae.train_autoencoder(train_df, hidden_size, num_layers, lr, weight_decay, n_epochs, batch_size, threshold)
+    latent_features = ds[1].detach()
+    
+    logging.info("Training Diffusion Model")
+    score = diff.train_diffusion(latent_features, T, hidden_dims, latent_features.shape[1], eps, sigma, lr, \
+                        num_batches_per_epoch, maximum_learning_rate, weight_decay, diff_n_epochs, batch_size)
     N = latent_features.shape[0] 
     P = latent_features.shape[1]
     
