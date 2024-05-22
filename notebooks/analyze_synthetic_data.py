@@ -15,8 +15,8 @@ from syncomp.metrics.utility import (
     train_eval_model
 )
 from syncomp.metrics.privacy import distance_closest_record, evaluate_tapas_attack
-from syncomp.utils.data_util import compute_unit_price
 from syncomp.utils.holdout_util import split_dataframe
+from syncomp.utils.data_util import CompleteJourneyDataset
 
 logging.getLogger().setLevel(logging.INFO)
 
@@ -29,11 +29,12 @@ def main(
 ):
 
     # read real df and synthetic df
-    real_df = pd.read_csv(f'{dir}/complete_dataset_filtered.csv', converters={'household_size': str, 'kids_count': str})
+    cd = CompleteJourneyDataset()
+    real_df = cd.run_preprocess()
     train_df, holdout_df, eval_df = split_dataframe(real_df, df_split_ratio, random_state)
 
     # generate one syn_df using autodiff
-    syn_df = pd.read_csv(f'{dir}/{model}/{random_state}/synthetic_data.csv', converters={'household_size': str, 'kids_count': str})
+    syn_df = cd.load_data(f'{dir}/{model}/{random_state}/synthetic_data.csv')
 
     """ 
     Fidelity metrics
@@ -61,10 +62,6 @@ def main(
     Utility metrics
     """
     logging.info('Compute utility metrics')
-    train_df = compute_unit_price(train_df)
-    syn_df = compute_unit_price(syn_df)
-    holdout_df = compute_unit_price(holdout_df)
-    eval_df = compute_unit_price(eval_df)
 
     # classification task
     train_X, train_y = get_classification_training_data(train_df)

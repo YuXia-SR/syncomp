@@ -5,11 +5,9 @@ import syncomp.models.TabDDPMdiff as TabDiff
 from syncomp.models.ctab_gan_model.ctabgan import CTABGAN
 from ctgan import CTGAN
 import pandas as pd
-import time
 import logging
-import tqdm
 
-def train_autodiff(
+def train_tabautodiff(
     train_df: pd.DataFrame,
     # Auto-encoder hyper-parameters 
     threshold = 0.01, # Threshold for mixed-type variables
@@ -36,44 +34,33 @@ def train_autodiff(
     
     logging.info("Training Diffusion Model")
     score = TabDiff.train_diffusion(latent_features, T, eps, sigma, lr, \
-                    num_batches_per_epoch, maximum_learning_rate, weight_decay, diff_n_epochs, batch_size)
+                    num_batches_per_epoch, maximum_learning_rate, weight_decay, diff_n_epochs, batch_size, device)
     N = latent_features.shape[0] 
     P = latent_features.shape[1]
     
-    start_time = time.time()
     sample = diff.Euler_Maruyama_sampling(score, T, N, P, device)
-    end_time = time.time()
-    duration = end_time - start_time
 
     logging.info("Generating synthetic data")
     gen_output = ds[0](sample, ds[2], ds[3])
     syn_df = pce.convert_to_table(train_df, gen_output, threshold)
 
-    return syn_df, duration
+    return syn_df
 
 def train_ctgan(
     train_df: pd.DataFrame,
-    train_batch_size: int=500,
-    epochs: int=100,
+    epochs: int=10000,
+    device: str='cpu',
     **kwargs
 ):
     # Names of the columns that are discrete
     discrete_columns = list(train_df.select_dtypes(include=['object', 'int']).columns)
 
-    synthetic_data_record = []
-    start_row = 0
-    end_row = start_row + train_batch_size
-    with tqdm.tqdm(total=len(train_df), desc="Sample synthetic data") as pbar:
-        while start_row < len(train_df):
-            ctgan = CTGAN(epochs=epochs, **kwargs)
-            ctgan.fit(train_df.iloc[start_row:end_row], discrete_columns)
-            start_row = end_row
-            end_row += train_batch_size
-            synthetic_data = ctgan.sample(train_batch_size)
-            synthetic_data_record.append(synthetic_data)
-            pbar.update(train_batch_size)
+    ctgan = CTGAN(epochs=epochs)
+    ctgan.set_device(device)
+    ctgan.fit(train_df, discrete_columns)
+    syn_df = ctgan.sample(len(train_df))
 
-    return pd.concat(synthetic_data_record)
+    return syn_df
     
 
 def train_ctabgan(
@@ -83,7 +70,8 @@ def train_ctabgan(
     num_channels=64,
     l2scale=1e-5,
     batch_size=500,
-    epochs=150
+    epochs=10000,
+    **kwargs
 ):
     categorical_columns = train_df.select_dtypes(include=['object']).columns
     integer_columns = train_df.select_dtypes(include=['int64']).columns
@@ -101,10 +89,3 @@ def train_ctabgan(
     synthesizer.fit()
     syn_df = synthesizer.generate_samples(len(train_df))
     return syn_df
-
-
-# def train_tabddpm(
-#         train_df: pd.DataFrame,
-#         num_epochs: int=1000,
-#         batch_size: int=500,
-# ):

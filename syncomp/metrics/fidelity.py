@@ -6,8 +6,7 @@ import numpy as np
 from syncomp.metrics.feature import (
     compute_basket_size_per_product,
     compute_category_penetration_per_category,
-    compute_customer_retention_per_store,
-    compute_product_price,
+    compute_customer_retention,
     compute_purchase_prob_per_product,
     compute_time_between_purchase_per_customer,
     compute_visit_prob_per_store,
@@ -19,15 +18,13 @@ from syncomp.metrics.corr import (
 )
 
 def gather_fidelity_info_from_df(df, sample_size=1000, exclude_columns=[]):
-    # Get product price
-    df = compute_product_price(df)
     # Extract feature distribution
     numerical_feature = {
         "visit_prob_per_store": compute_visit_prob_per_store(df, sample_size=sample_size),
         "purchase_prob_per_product": compute_purchase_prob_per_product(df, sample_size=sample_size),
         "basket_size_per_product": compute_basket_size_per_product(df, sample_size=sample_size),
         "time_between_purchase_per_customer": compute_time_between_purchase_per_customer(df, sample_size=sample_size),
-        "customer_retention_per_store": compute_customer_retention_per_store(df, sample_size=sample_size),
+        "customer_retention_per_store": compute_customer_retention(df, sample_size=sample_size),
         "category_penetration_per_category": compute_category_penetration_per_category(df, sample_size=sample_size),
         "unit_price": get_column(df, "unit_price", sample_size=sample_size),
         "base_price": get_column(df, "base_price", sample_size=sample_size),
