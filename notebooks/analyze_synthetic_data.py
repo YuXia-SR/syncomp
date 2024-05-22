@@ -31,6 +31,7 @@ def main(
     # read real df and synthetic df
     cd = CompleteJourneyDataset()
     real_df = cd.run_preprocess()
+    real_df = real_df.drop(columns=['product_id', 'household_id'])
     train_df, holdout_df, eval_df = split_dataframe(real_df, df_split_ratio, random_state)
 
     # generate one syn_df using autodiff
@@ -103,7 +104,7 @@ def main(
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="A simple program with argparse")
-    parser.add_argument('--model', type=str, help='Model to use for generating synthetic data', default='AutoDiff')
+    parser.add_argument('--model', type=str, help='Model to use for generating synthetic data', default='TabAutoDiff')
     parser.add_argument('--random_state', type=int, help='Random state to split the real data', default=0)
     parser.add_argument('--df_split_ratio', type=float, nargs='+', help='Proportions to split the real data', default=[0.4, 0.4, 0.2])
     parser.add_argument('--sample_size', type=int, help='Sample size for fidelity and privacy metrics', default=1000)

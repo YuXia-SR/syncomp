@@ -10,26 +10,28 @@ from sklearn.impute import SimpleImputer
 
 def get_regression_training_data(df):
     # define the training data for regression task
-    agg_df = df.groupby(['household_id', 'age', 'income', 'home_ownership',
+    df['unit_price'] = df['sales_value'] / df['quantity']
+    agg_df = df.groupby(['age', 'income', 'home_ownership',
             'marital_status', 'household_size', 'household_comp', 'kids_count', 'week']).agg({
             'quantity': 'sum',
             'unit_price': 'mean'
             }).reset_index()
 
     y = agg_df['quantity']
-    X = agg_df.drop(columns=['quantity', 'household_id', 'week'])
+    X = agg_df.drop(columns=['quantity', 'week'])
     return X, y
 
 def get_classification_training_data(df, threshold=10):
     # define the training data for classification task
-    agg_df = df.groupby(['household_id', 'age', 'income', 'home_ownership',
+    df['unit_price'] = df['sales_value'] / df['quantity']
+    agg_df = df.groupby(['age', 'income', 'home_ownership',
             'marital_status', 'household_size', 'household_comp', 'kids_count', 'week']).agg({
             'quantity': 'sum',
             'unit_price': 'mean'
             }).reset_index()
 
     y = (agg_df['quantity'] > threshold).astype(int)
-    X = agg_df.drop(columns=['quantity', 'household_id', 'week'])
+    X = agg_df.drop(columns=['quantity', 'week'])
     return X, y
 
 def train_eval_model(model, X, y, X_test, y_test, model_type='regression'):

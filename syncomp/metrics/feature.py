@@ -25,7 +25,7 @@ def compute_basket_size_per_product(df, sample_size=1000, random_state=0):
 def compute_time_between_purchase_per_customer(df, sample_size=1000, random_state=0):
     # average time between purchases per customer
     visit_days = df[['household_id', 'week']].drop_duplicates().sort_values(['household_id', 'week'])
-    visit_days['week'] = visit_days['week'].astype('int')
+    visit_days['week'] = visit_days['week'].astype('float')
     visit_days['time_between_purchase'] = visit_days.groupby('household_id').week.diff()
     visit_days = visit_days.dropna()
     avg_time_between_purchase = visit_days.groupby('household_id').time_between_purchase.mean()
@@ -34,8 +34,8 @@ def compute_time_between_purchase_per_customer(df, sample_size=1000, random_stat
 
 def compute_customer_retention(df, window_length=30, sample_size=1000, random_state=0):
     # number of unique customers who have visited in the last 30 days / total number of unique customers
-    last_day = int(df.week.max())
-    retained_customers = df[df.week.astype('int') > last_day - window_length].household_id.nunique()
+    last_day = max(df.week.astype('float'))
+    retained_customers = df[df.week.astype('float') > last_day - window_length].household_id.nunique()
     customer_count = df.household_id.nunique()
     customer_retention = retained_customers / customer_count
     return np.asarray([customer_retention])

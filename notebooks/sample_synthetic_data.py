@@ -15,7 +15,7 @@ def set_logging():
 def format_infrequent_product_in_synthetic_data(df, infrequent_products_hierarchy, weights=None):
     product_hierarchy = infrequent_products_hierarchy.sample(len(df), replace=True, weights=weights)
     product_columns = product_hierarchy.columns
-    df.loc[:, product_columns] = product_hierarchy
+    df.loc[:, product_columns] = product_hierarchy.values
 
     return df.drop(columns=['product_id'])
 
@@ -73,9 +73,9 @@ def main(
 
     syn_df = pd.concat(syn_df)
 
-    categorical_columns = real_df.select_dtypes(include=['object']).columns
+    categorical_columns = syn_df.select_dtypes(include=['object']).columns
     syn_df[categorical_columns] = syn_df[categorical_columns].astype(str)
-    int_columns = real_df.select_dtypes(include=['int64']).columns
+    int_columns = syn_df.select_dtypes(include=['int64']).columns
     syn_df[int_columns] = syn_df[int_columns].astype(int)
 
     logging.info('save synthetic data')
@@ -88,7 +88,7 @@ if __name__ == '__main__':
     parser.add_argument('--random_state', type=int, help='Random state to split the real data', default=0)
     parser.add_argument('--df_split_ratio', type=float, nargs='+', help='Proportions to split the real data', default=[0.4, 0.4, 0.2])
     parser.add_argument('--dir', type=str, help='Directory to save the result', default='results')
-    parser.add_argument('--n_job', type=int, help='Number of simulation running in parallel', default=4)
+    parser.add_argument('--n_job', type=int, help='Number of simulation running in parallel', default=-1)
     parser.add_argument('--device', type=str, help='Device to run the training', default='cuda')
     
     args = parser.parse_args()

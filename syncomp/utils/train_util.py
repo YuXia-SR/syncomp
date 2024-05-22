@@ -11,7 +11,7 @@ def train_tabautodiff(
     train_df: pd.DataFrame,
     # Auto-encoder hyper-parameters 
     threshold = 0.01, # Threshold for mixed-type variables
-    n_epochs = 10000, #@param {'type':'integer'}
+    n_epochs = 100, #@param {'type':'integer'}
     eps = 1e-5, #@param {type:"number"}
     weight_decay = 1e-6, #@param {'type':'number'}
     maximum_learning_rate = 1e-2, #@param {'type':'number'}
@@ -20,7 +20,7 @@ def train_tabautodiff(
     num_layers = 3,
     batch_size = 50,
     # Diffusion hyper-parameters
-    diff_n_epochs = 10000, #@param {'type':'integer'}
+    diff_n_epochs = 100, #@param {'type':'integer'}
     sigma = 20,  #@param {'type':'integer'} 
     num_batches_per_epoch = 50, #@param {'type':'number'}
     T = 300,  #@param {'type':'integer'}

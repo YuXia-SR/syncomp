@@ -126,7 +126,7 @@ class CompleteJourneyDataset():
         )
         return self
     
-    def add_pricing_columns(self):
+    def aggregate_columns(self):
         """Read the raw transaction datasets.
 
         Add date column to prepare the prophet demand model fitting.
@@ -156,30 +156,30 @@ class CompleteJourneyDataset():
             )
             .reset_index()
         )
-        # use dealt price / quantity to get unit price
-        self.transactions["unit_price"] = (
-            self.transactions["sales_value"]
-            / self.transactions["quantity"]
-        )
-        # compute shelf price, and use unit_price / shelf_price to get the discount portion
-        self.transactions["base_price"] = (
-            self.transactions["sales_value"]
-            + self.transactions["coupon_match_disc"]
-            + self.transactions["retail_disc"]
-            + self.transactions["coupon_disc"]
-        ) / self.transactions["quantity"]
-        self.transactions["retail_discount_portion"] = (
-            self.transactions["retail_disc"]
-                / (self.transactions["quantity"] * self.transactions["base_price"])
-        )
-        self.transactions["coupon_discount_portion"] = (
-            self.transactions["coupon_disc"]
-                / (self.transactions["quantity"] * self.transactions["base_price"])
-        )
-        self.transactions["coupon_match_discount_portion"] = (
-            self.transactions["coupon_match_disc"]
-                / (self.transactions["quantity"] * self.transactions["base_price"])
-        )
+        # # use dealt price / quantity to get unit price
+        # self.transactions["unit_price"] = (
+        #     self.transactions["sales_value"]
+        #     / self.transactions["quantity"]
+        # )
+        # # compute shelf price, and use unit_price / shelf_price to get the discount portion
+        # self.transactions["base_price"] = (
+        #     self.transactions["sales_value"]
+        #     + self.transactions["coupon_match_disc"]
+        #     + self.transactions["retail_disc"]
+        #     + self.transactions["coupon_disc"]
+        # ) / self.transactions["quantity"]
+        # self.transactions["retail_discount_portion"] = (
+        #     self.transactions["retail_disc"]
+        #         / (self.transactions["quantity"] * self.transactions["base_price"])
+        # )
+        # self.transactions["coupon_discount_portion"] = (
+        #     self.transactions["coupon_disc"]
+        #         / (self.transactions["quantity"] * self.transactions["base_price"])
+        # )
+        # self.transactions["coupon_match_discount_portion"] = (
+        #     self.transactions["coupon_match_disc"]
+        #         / (self.transactions["quantity"] * self.transactions["base_price"])
+        # )
         
         return self
     
@@ -226,7 +226,7 @@ class CompleteJourneyDataset():
             self.filter_invalid_transactions()
             .drop_duplicate_product_id()
             .drop_duplicate_customer_id()
-            .add_pricing_columns()
+            .aggregate_columns()
             .filter_invalid_customers()
             .filter_large_transactions()
             .remove_product_with_few_transactions()
@@ -263,7 +263,7 @@ class CompleteJourneyDataset():
     def load_data(self, path):
         assert path.endswith('.csv'), 'Only csv files are supported'
         data = pd.read_csv(path)
-        category_columns = list(data.select_dtypes(include=['object']).columns) + ['product_id', 'household_id', 'week', 'manufacturer_id']
+        category_columns = list(data.select_dtypes(include=['object']).columns) + ['week', 'manufacturer_id']
         data[category_columns] = data[category_columns].astype('str')
 
         return data
