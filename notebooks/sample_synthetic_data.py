@@ -44,11 +44,12 @@ def main(
     device: str='cpu',
 ):
     set_logging()
-    logging.info('args: model=%s, random_state=%s, df_split_ratio=%s', model, random_state, df_split_ratio)
+    logging.info('args: model=%s, random_state=%s, df_split_ratio=%s, dir=%s, n_job=%s, device=%s', model, random_state, df_split_ratio, dir, n_job, device)
     logging.info('read real df')
     cd = CompleteJourneyDataset()
     real_df = cd.run_preprocess()
     real_df_combined = cd.combine_product_with_few_transactions(real_df)
+    real_df_combined = real_df_combined.drop(columns=['product_id', 'household_id'])
     train_df, _, _ = split_dataframe(real_df_combined, df_split_ratio, random_state, groupby='department')
     infrequent_products_hierarchy = cd.infrequent_products_hierarchy
     infrequent_products_weights = infrequent_products_hierarchy['weights']
@@ -61,6 +62,8 @@ def main(
         train = train_ctgan
     elif model == 'CTABGAN':
         train = train_ctabgan
+    else:
+        raise NotImplementedError(f"Model {model} not supported yet")
 
     department_group = train_df['department'].unique()
     syn_df = Parallel(n_jobs=n_job)(delayed(train_func)(
@@ -81,7 +84,7 @@ def main(
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="A simple program with argparse")
-    parser.add_argument('--model', type=str, help='Model to use for generating synthetic data', default='AutoDiff')
+    parser.add_argument('--model', type=str, help='Model to use for generating synthetic data', default='TabAutoDiff')
     parser.add_argument('--random_state', type=int, help='Random state to split the real data', default=0)
     parser.add_argument('--df_split_ratio', type=float, nargs='+', help='Proportions to split the real data', default=[0.4, 0.4, 0.2])
     parser.add_argument('--dir', type=str, help='Directory to save the result', default='results')
