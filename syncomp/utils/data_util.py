@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 class CompleteJourneyDataset():
-    def __init__(self, threshold_to_remove_products=20, threshold_to_remove_large_trx=100, threshold_to_combine_products=100):
+    def __init__(self, threshold_to_remove_products=20, threshold_to_remove_large_trx=100, threshold_to_combine_products=500):
         complete_dataset = get_data()
         self.transactions = complete_dataset['transactions']
         self.transactions[['household_id', 'product_id', 'week']] = self.transactions[['household_id', 'product_id', 'week']].astype('str')

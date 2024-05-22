@@ -14,7 +14,6 @@ from torch.optim import Adam
 from torch.optim.lr_scheduler import OneCycleLR
 from scipy import integrate
 
-device = 'cpu'  #@param ['cuda', 'cpu'] {'type':'string'}
 torch.cuda.empty_cache()
 
 ###########################################################################################################################################
@@ -305,7 +304,8 @@ def compute_v(ll, alpha, beta):
     return v
 
 
-def loss_fn(model, Input_Data, T, eps=1e-5):
+def loss_fn(model, Input_Data, T, eps=1e-5, device='cpu'):
+     
     N, input_dim = Input_Data.shape  
     loss_values = torch.empty(N)
     
@@ -313,7 +313,7 @@ def loss_fn(model, Input_Data, T, eps=1e-5):
         random_t = torch.rand(T) * (1. - eps) + eps
         
         # Compute Perturbed data from SDE
-        mean = marginal_prob_mean_fn(Input_Data[row,:], random_t)#.to(device)
+        mean = marginal_prob_mean_fn(Input_Data[row,:], random_t)
         std = marginal_prob_std_fn(random_t).to(device)
         z = torch.randn(T, input_dim).to(device)
         perturbed_data = mean + z * std[:, None]
@@ -349,8 +349,8 @@ class MLPDiffusion(nn.Module):
 
 
 def train_diffusion(latent_features, T, eps, sigma, lr, \
-                    num_batches_per_epoch, maximum_learning_rate, weight_decay, n_epochs, batch_size):
-    
+                    num_batches_per_epoch, maximum_learning_rate, weight_decay, n_epochs, batch_size, device='cpu'):
+     
     rtdl_params={
         'd_in': latent_features.shape[1],
         'd_layers': [256,256],
@@ -378,7 +378,7 @@ def train_diffusion(latent_features, T, eps, sigma, lr, \
             batch_idx = random.choices(range(latent_features.shape[0]), k=batch_size)  ## Choose random indices 
             batch_X = latent_features[batch_idx,:]  
             
-            loss_values = loss_fn(ScoreNet_Parallel, batch_X, T, eps)
+            loss_values = loss_fn(ScoreNet_Parallel, batch_X, T, eps, device)
             loss = torch.mean(loss_values)
             
             optimizer.zero_grad()

@@ -5,11 +5,9 @@ import syncomp.models.TabDDPMdiff as TabDiff
 from syncomp.models.ctab_gan_model.ctabgan import CTABGAN
 from ctgan import CTGAN
 import pandas as pd
-import time
 import logging
-import tqdm
 
-def train_autodiff(
+def train_tabautodiff(
     train_df: pd.DataFrame,
     # Auto-encoder hyper-parameters 
     threshold = 0.01, # Threshold for mixed-type variables
@@ -36,7 +34,7 @@ def train_autodiff(
     
     logging.info("Training Diffusion Model")
     score = TabDiff.train_diffusion(latent_features, T, eps, sigma, lr, \
-                    num_batches_per_epoch, maximum_learning_rate, weight_decay, diff_n_epochs, batch_size)
+                    num_batches_per_epoch, maximum_learning_rate, weight_decay, diff_n_epochs, batch_size, device)
     N = latent_features.shape[0] 
     P = latent_features.shape[1]
     
@@ -50,13 +48,15 @@ def train_autodiff(
 
 def train_ctgan(
     train_df: pd.DataFrame,
-    epochs: int=100,
+    epochs: int=10000,
+    device: str='cpu',
     **kwargs
 ):
     # Names of the columns that are discrete
     discrete_columns = list(train_df.select_dtypes(include=['object', 'int']).columns)
 
-    ctgan = CTGAN(epochs=epochs, **kwargs)
+    ctgan = CTGAN(epochs=epochs)
+    ctgan.set_device(device)
     ctgan.fit(train_df, discrete_columns)
     syn_df = ctgan.sample(len(train_df))
 
@@ -70,7 +70,8 @@ def train_ctabgan(
     num_channels=64,
     l2scale=1e-5,
     batch_size=500,
-    epochs=150
+    epochs=10000,
+    **kwargs
 ):
     categorical_columns = train_df.select_dtypes(include=['object']).columns
     integer_columns = train_df.select_dtypes(include=['int64']).columns
