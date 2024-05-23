@@ -1,11 +1,16 @@
+from ctgan import CTGAN
+import pandas as pd
+import numpy as np
+import logging
+from sklearn.preprocessing import OneHotEncoder, QuantileTransformer, MinMaxScaler
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
+
 import syncomp.models.process_GQ as pce
 import syncomp.models.autoencoder as ae
 import syncomp.models.diffusion as diff
 import syncomp.models.TabDDPMdiff as TabDiff
 from syncomp.models.ctab_gan_model.ctabgan import CTABGAN
-from ctgan import CTGAN
-import pandas as pd
-import logging
 
 def train_tabautodiff(
     train_df: pd.DataFrame,
@@ -129,4 +134,133 @@ def train_ctabgan(
     )
     synthesizer.fit()
     syn_df = synthesizer.generate_samples(len(train_df))
+    return syn_df
+
+def prepare_latent_features(
+        train_df: pd.DataFrame,
+        category_transformer,
+        numerical_transformer,
+):
+    logging.info("Prepare latent features")
+    # Separate categorical and numerical columns using select_dtypes
+    categorical_cols = train_df.select_dtypes(include=['object']).columns.tolist()
+    train_df[categorical_cols] = train_df[categorical_cols].astype(str)
+    numerical_cols = train_df.select_dtypes(exclude=['object']).columns.tolist()
+    train_df[numerical_cols] = train_df[numerical_cols].astype(float)
+
+    # Pipeline for preprocessing categorical columns
+    categorical_pipeline = Pipeline([
+        ('imputer', SimpleImputer(strategy='most_frequent', add_indicator=True, )),  # Impute missing values (if any)
+        ('onehot', category_transformer)  # One-hot encode categorical columns
+    ])
+
+    # Pipeline for preprocessing numerical columns
+    numerical_pipeline = Pipeline([
+        ('imputer', SimpleImputer(strategy='median', add_indicator=True)),  # Impute missing values (if any)
+        ('quantile',numerical_transformer)  # Transform numerical columns with quantile transformer
+    ])
+
+    categorical_cols_features = categorical_pipeline.fit_transform(train_df[categorical_cols]).toarray().astype('float32')
+    numerical_cols_features = numerical_pipeline.fit_transform(train_df[numerical_cols]).astype('float32')
+    latent_features = np.hstack([categorical_cols_features, numerical_cols_features])
+    n_categorical_features = categorical_cols_features.shape[1]
+
+    return latent_features, n_categorical_features, categorical_pipeline, numerical_pipeline, categorical_cols, numerical_cols
+
+def convert_syn_df(
+        sample,
+        n_categorical_features,
+        categorical_pipeline,
+        numerical_pipeline,
+        categorical_cols,
+        numerical_cols
+):
+    logging.info("Convert latent features to synthetic data")
+    categorical_df = categorical_pipeline[1].inverse_transform(sample[:, :n_categorical_features])
+    numerical_df = numerical_pipeline[1].inverse_transform(sample[:, n_categorical_features:])
+    syn_df = pd.concat([pd.DataFrame(categorical_df, columns=categorical_cols), pd.DataFrame(numerical_df, columns=numerical_cols)], axis=1)
+
+    return syn_df
+
+def train_tabddpm(
+    train_df: pd.DataFrame,
+    eps = 1e-5, #@param {type:"number"}
+    weight_decay = 1e-6, #@param {'type':'number'}
+    maximum_learning_rate = 1e-2, #@param {'type':'number'}
+    lr = 2e-4, #@param {'type':'number'}
+    batch_size = 50,
+    diff_n_epochs = 10000, #@param {'type':'integer'}
+    sigma = 20,  #@param {'type':'integer'} 
+    num_batches_per_epoch = 50, #@param {'type':'number'}
+    T = 300,  #@param {'type':'integer'}
+    device='cpu', #@param {'type':'string'},
+):
+    (
+        latent_features, 
+        n_categorical_features, 
+        categorical_pipeline, 
+        numerical_pipeline, 
+        categorical_cols, 
+        numerical_cols
+    ) =prepare_latent_features(train_df, OneHotEncoder(handle_unknown='ignore'), QuantileTransformer())
+
+    N, P = latent_features.shape
+    score = TabDiff.train_diffusion(latent_features, T, eps, sigma, lr, \
+                num_batches_per_epoch, maximum_learning_rate, weight_decay, diff_n_epochs, batch_size)
+    sample = TabDiff.Euler_Maruyama_sampling(score, T, N, P, device)
+    
+    syn_df = convert_syn_df(
+        sample, 
+        n_categorical_features, 
+        categorical_pipeline, 
+        numerical_pipeline, 
+        categorical_cols, 
+        numerical_cols
+    )
+    return syn_df
+
+
+def train_stasy(
+    train_df: pd.DataFrame,
+    weight_decay = 1e-6, #@param {'type':'number'}
+    lr = 2e-4, #@param {'type':'number'}
+    batch_size = 50,
+    # Diffusion hyper-parameters
+    diff_n_epochs = 10000, #@param {'type':'integer'}
+    sigma = 20,  #@param {'type':'integer'} 
+    num_batches_per_epoch = 50, #@param {'type':'number'}
+    T = 300,  #@param {'type':'integer'}
+    hidden_dims = (256, 512, 1024, 512, 256), #@param {type:"raw"}
+    maximum_learning_rate = 1e-2, #@param {'type':'number'}
+    eps = 1e-5, #@param {type:"number"}
+    device='cpu', #@param {'type':'string'},
+    **kwargs
+):  
+    
+    (
+        latent_features, 
+        n_categorical_features, 
+        categorical_pipeline, 
+        numerical_pipeline, 
+        categorical_cols, 
+        numerical_cols
+    ) =prepare_latent_features(train_df, OneHotEncoder(handle_unknown='ignore'), MinMaxScaler())
+
+    N, P = latent_features.shape
+    
+    logging.info("Training Diffusion Model")
+    score = diff.train_diffusion(latent_features, T, hidden_dims, latent_features.shape[1], eps, sigma, lr, \
+                        num_batches_per_epoch, maximum_learning_rate, weight_decay, diff_n_epochs, batch_size)
+    N = latent_features.shape[0] 
+    P = latent_features.shape[1]
+    sample = diff.Euler_Maruyama_sampling(score, T, N, P, device)
+    
+    syn_df = convert_syn_df(
+        sample, 
+        n_categorical_features, 
+        categorical_pipeline, 
+        numerical_pipeline, 
+        categorical_cols, 
+        numerical_cols
+    )
     return syn_df

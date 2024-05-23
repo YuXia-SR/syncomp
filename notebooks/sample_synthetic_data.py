@@ -3,10 +3,9 @@ import logging
 import argparse
 import os
 from joblib import Parallel, delayed
-from tqdm import tqdm
 from syncomp.utils.data_util import CompleteJourneyDataset
 from syncomp.utils.holdout_util import split_dataframe
-from syncomp.utils.train_util import train_tabautodiff, train_ctgan, train_ctabgan, train_stasyautodiff
+from syncomp.utils.train_util import train_tabautodiff, train_ctgan, train_ctabgan, train_stasyautodiff, train_stasy, train_tabddpm
 
 def set_logging():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -64,6 +63,10 @@ def main(
         train = train_ctgan
     elif model == 'CTABGAN':
         train = train_ctabgan
+    elif model == 'TabDDPM':
+        train = train_tabddpm
+    elif model == 'Stasy':
+        train = train_stasy
     else:
         raise NotImplementedError(f"Model {model} not supported yet")
 
