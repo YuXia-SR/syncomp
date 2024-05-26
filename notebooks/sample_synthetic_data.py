@@ -2,6 +2,7 @@ import pandas as pd
 import logging
 import argparse
 import os
+from pathlib import Path
 from joblib import Parallel, delayed
 from syncomp.utils.data_util import CompleteJourneyDataset
 from syncomp.utils.holdout_util import split_dataframe
@@ -18,7 +19,7 @@ def format_infrequent_product_in_synthetic_data(df, infrequent_products_hierarch
 
     return df.drop(columns=['product_id'])
 
-def train_func(department, train_df, train, infrequent_products_hierarchy, infrequent_products_weights, device='cpu'):
+def train_func(department, train_df, train, infrequent_products_hierarchy, infrequent_products_weights, device='cpu', path:str='results'):
     set_logging()
 
     filtered_train_df = train_df[train_df.department == department]
@@ -32,7 +33,9 @@ def train_func(department, train_df, train, infrequent_products_hierarchy, infre
     if department == '-1':
         filtered_syn_df = format_infrequent_product_in_synthetic_data(filtered_syn_df, infrequent_products_hierarchy, infrequent_products_weights)
 
-    return filtered_syn_df
+    path = str(Path(path, f'{department}.csv'))
+    logging.info(f'Save synthetic data for department {department} to {path}')
+    filtered_syn_df.to_csv(path, index=False)
 
 def main(
     model: str='AutoDiff',
@@ -69,23 +72,15 @@ def main(
         train = train_stasy
     else:
         raise NotImplementedError(f"Model {model} not supported yet")
+    
+    result_dir = f'{dir}/{model}/{random_state}'
+    os.makedirs(f'{dir}/{model}/{random_state}', exist_ok=True)
 
     department_group = train_df['department'].unique()
-    syn_df = Parallel(n_jobs=n_job)(delayed(train_func)(
+    Parallel(n_jobs=n_job)(delayed(train_func)(
         department, train_df, train, 
-        infrequent_products_hierarchy, infrequent_products_weights, device
+        infrequent_products_hierarchy, infrequent_products_weights, device, result_dir
     ) for department in department_group)
-
-    syn_df = pd.concat(syn_df)
-
-    categorical_columns = syn_df.select_dtypes(include=['object']).columns
-    syn_df[categorical_columns] = syn_df[categorical_columns].astype(str)
-    int_columns = syn_df.select_dtypes(include=['int64']).columns
-    syn_df[int_columns] = syn_df[int_columns].astype(int)
-
-    logging.info('save synthetic data')
-    os.makedirs(f'{dir}/{model}/{random_state}', exist_ok=True)
-    syn_df.to_csv(f'{dir}/{model}/{random_state}/synthetic_data.csv', index=False)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="A simple program with argparse")
@@ -93,7 +88,7 @@ if __name__ == '__main__':
     parser.add_argument('--random_state', type=int, help='Random state to split the real data', default=0)
     parser.add_argument('--df_split_ratio', type=float, nargs='+', help='Proportions to split the real data', default=[0.4, 0.4, 0.2])
     parser.add_argument('--dir', type=str, help='Directory to save the result', default='results')
-    parser.add_argument('--n_job', type=int, help='Number of simulation running in parallel', default=-1)
+    parser.add_argument('--n_job', type=int, help='Number of simulation running in parallel', default=5)
     parser.add_argument('--device', type=str, help='Device to run the training', default='cpu')
     
     args = parser.parse_args()

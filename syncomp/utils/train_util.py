@@ -63,7 +63,7 @@ def train_stasyautodiff(
     num_layers = 3,
     batch_size = 50,
     # Diffusion hyper-parameters
-    diff_n_epochs = 10000, #@param {'type':'integer'}
+    diff_n_epochs = 100, #@param {'type':'integer'}
     sigma = 20,  #@param {'type':'integer'} 
     num_batches_per_epoch = 50, #@param {'type':'number'}
     T = 300,  #@param {'type':'integer'}
@@ -94,7 +94,7 @@ def train_stasyautodiff(
 
 def train_ctgan(
     train_df: pd.DataFrame,
-    epochs: int=10000,
+    epochs: int=500,
     device: str='cpu',
     **kwargs
 ):
@@ -115,8 +115,8 @@ def train_ctabgan(
     random_dim=100,
     num_channels=64,
     l2scale=1e-5,
-    batch_size=500,
-    epochs=10000,
+    batch_size=100,
+    epochs=500,
     **kwargs
 ):
     categorical_columns = train_df.select_dtypes(include=['object']).columns
@@ -204,6 +204,7 @@ def train_tabddpm(
         numerical_cols
     ) =prepare_latent_features(train_df, OneHotEncoder(handle_unknown='ignore'), QuantileTransformer())
 
+    logging.info("Training diffusion model")
     N, P = latent_features.shape
     score = TabDiff.train_diffusion(latent_features, T, eps, sigma, lr, \
                 num_batches_per_epoch, maximum_learning_rate, weight_decay, diff_n_epochs, batch_size)
@@ -226,7 +227,7 @@ def train_stasy(
     lr = 2e-4, #@param {'type':'number'}
     batch_size = 50,
     # Diffusion hyper-parameters
-    diff_n_epochs = 10000, #@param {'type':'integer'}
+    diff_n_epochs = 100, #@param {'type':'integer'}
     sigma = 20,  #@param {'type':'integer'} 
     num_batches_per_epoch = 50, #@param {'type':'number'}
     T = 300,  #@param {'type':'integer'}
@@ -247,7 +248,6 @@ def train_stasy(
     ) =prepare_latent_features(train_df, OneHotEncoder(handle_unknown='ignore'), MinMaxScaler())
 
     N, P = latent_features.shape
-    
     logging.info("Training Diffusion Model")
     score = diff.train_diffusion(latent_features, T, hidden_dims, latent_features.shape[1], eps, sigma, lr, \
                         num_batches_per_epoch, maximum_learning_rate, weight_decay, diff_n_epochs, batch_size)
