@@ -6,7 +6,11 @@ from pathlib import Path
 from joblib import Parallel, delayed
 from syncomp.utils.data_util import CompleteJourneyDataset
 from syncomp.utils.holdout_util import split_dataframe
-from syncomp.utils.train_util import train_tabautodiff, train_ctgan, train_ctabgan, train_stasyautodiff, train_stasy, train_tabddpm
+from syncomp.utils.train_util import (
+    train_tabautodiff, train_ctgan, train_ctabgan, 
+    train_stasyautodiff, train_stasy, train_tabddpm,
+    train_autogan
+)
 
 def set_logging():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -70,6 +74,8 @@ def main(
         train = train_tabddpm
     elif model == 'Stasy':
         train = train_stasy
+    elif model == 'AutoGAN':
+        train = train_autogan
     else:
         raise NotImplementedError(f"Model {model} not supported yet")
     
