@@ -46,7 +46,7 @@ def train_eval_model(model, X, y, X_test, y_test, model_type='regression'):
 
     categorical_transformer = Pipeline(steps=[
         ('imputer', SimpleImputer(strategy='most_frequent', fill_value='missing')),
-        ('onehot', OneHotEncoder(handle_unknown='ignore'))])
+        ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False))])
 
     # Combine preprocessing steps using ColumnTransformer
     preprocessor = ColumnTransformer(

@@ -1,9 +1,12 @@
 import pandas as pd
 from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.ensemble import HistGradientBoostingRegressor
+from sklearn.ensemble import BaggingClassifier
 import logging
 import argparse
 import pickle
 import json
+import os
 
 from syncomp.metrics.fidelity import (
     gather_fidelity_info_from_df,
@@ -35,7 +38,13 @@ def main(
     train_df, holdout_df, eval_df = split_dataframe(real_df, df_split_ratio, random_state)
 
     # generate one syn_df using autodiff
-    syn_df = cd.load_data(f'{dir}/{model}/{random_state}/synthetic_data.csv')
+    syn_files = os.listdir(f'{dir}/{model}/{random_state}')
+    syn_df = []
+    for file in syn_files:
+        if file.endswith('.csv'):
+            df = cd.load_data(f'{dir}/{model}/{random_state}/{file}')
+            syn_df.append(df)
+    syn_df = pd.concat(syn_df)
 
     """ 
     Fidelity metrics
@@ -56,22 +65,24 @@ def main(
     fidelity_metric = {'syn_df': fidelity_metrics_syn, 'holdout_df': fidelity_metrics_holdout}
     with open(f'{dir}/{model}/{random_state}/fidelity_info.pkl', 'wb') as f:
         pickle.dump(fidelity_info, f)
-    with open(f'{dir}/{model}/{random_state}/fidelity_metric.json', 'w') as f:
+    with open(f'{dir}/{model}/{random_state}/fidelity_metrics.json', 'w') as f:
         json.dump(fidelity_metric, f, indent=4)
 
     """
     Utility metrics
     """
     logging.info('Compute utility metrics')
+    classification_model = BaggingClassifier
+    regression_model = HistGradientBoostingRegressor
 
     # classification task
     train_X, train_y = get_classification_training_data(train_df)
     syn_X, syn_y = get_classification_training_data(syn_df)
     holdout_X, holdout_y = get_classification_training_data(holdout_df)
     eval_X, eval_y = get_classification_training_data(eval_df)
-    classification_real_metric = train_eval_model(LogisticRegression, train_X, train_y, eval_X, eval_y, model_type='classification')
-    classification_holdout_metric = train_eval_model(LogisticRegression, holdout_X, holdout_y, eval_X, eval_y, model_type='classification')
-    classification_syn_metric = train_eval_model(LogisticRegression, syn_X, syn_y, eval_X, eval_y, model_type='classification')
+    classification_real_metric = train_eval_model(classification_model, train_X, train_y, eval_X, eval_y, model_type='classification')
+    classification_holdout_metric = train_eval_model(classification_model, holdout_X, holdout_y, eval_X, eval_y, model_type='classification')
+    classification_syn_metric = train_eval_model(classification_model, syn_X, syn_y, eval_X, eval_y, model_type='classification')
 
     # regression task
     train_X, train_y = get_regression_training_data(train_df)
@@ -79,9 +90,9 @@ def main(
     holdout_X, holdout_y = get_regression_training_data(holdout_df)
     eval_X, eval_y = get_regression_training_data(eval_df)
     # train a linear regression model
-    regression_real_metric = train_eval_model(LinearRegression, train_X, train_y, eval_X, eval_y)
-    regression_holdout_metric = train_eval_model(LinearRegression, holdout_X, holdout_y, eval_X, eval_y)
-    regression_syn_metric = train_eval_model(LinearRegression, syn_X, syn_y, eval_X, eval_y)
+    regression_real_metric = train_eval_model(HistGradientBoostingRegressor, train_X, train_y, eval_X, eval_y)
+    regression_holdout_metric = train_eval_model(HistGradientBoostingRegressor, holdout_X, holdout_y, eval_X, eval_y)
+    regression_syn_metric = train_eval_model(HistGradientBoostingRegressor, syn_X, syn_y, eval_X, eval_y)
 
     utility_metrics = {
         'classification': {'train_df': classification_real_metric, 'holdout_df': classification_holdout_metric, 'syn_df': classification_syn_metric},
