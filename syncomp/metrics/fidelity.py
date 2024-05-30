@@ -48,6 +48,9 @@ def gather_fidelity_info_from_df(df, sample_size=1000, exclude_columns=[]):
         "product_category": get_column(merged_df, "product_category", sample_size=sample_size),
         "department": get_column(merged_df, "department", sample_size=sample_size),
     }
+    categorical_feature_nunique = {
+        key: merged_df[key].nunique() for key in categorical_feature.keys()
+    }
     # Compute corr, theils_u, and ratio matrices
     continuous_columns, categorical_columns = detect_column_types(merged_df)
     pearson_coef, theils_u, correl_ratio = compute_correlation(merged_df, continuous_columns, categorical_columns, sample_size=sample_size, exclude_columns=exclude_columns)
@@ -57,7 +60,7 @@ def gather_fidelity_info_from_df(df, sample_size=1000, exclude_columns=[]):
         "correl_ratio": correl_ratio
     }
 
-    return {'numerical': numerical_feature, 'categorical': categorical_feature, 'interaction': corr_feature}
+    return {'numerical': numerical_feature, 'categorical': categorical_feature, 'interaction': corr_feature, 'categorical_feature_nunique': categorical_feature_nunique}
 
 def string_conv_int(x):
     mapping = {v: i for i, v in enumerate(set(x))}
@@ -86,5 +89,5 @@ def compare_fidelity_info(real_fidelity_info, syn_fidelity_info):
     return {
         'wasserstein_distance': wasserstein_distance_metric,
         'jensenshannon_distance': jensenshannon_distance_metric,
-        'euclidean_distance': euclidean_distance_metric
+        'euclidean_distance': euclidean_distance_metric,
     }

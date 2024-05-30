@@ -23,6 +23,10 @@ def encode_integer(df):
 
     return df
 
+def compute_distance(df, row):
+    distance = np.linalg.norm(df - row, axis=1)
+    return distance.min()
+
 def distance_closest_record(real_df, syn_df, n_sample=1000, random_state=0, n_clusters=10):
     real_df = real_df.sample(n_sample, random_state=random_state).fillna(0)
     syn_df = syn_df.fillna(0)
@@ -30,15 +34,11 @@ def distance_closest_record(real_df, syn_df, n_sample=1000, random_state=0, n_cl
     real_df = encode_integer(real_df)
     syn_df = encode_integer(syn_df)
 
-    def compute_distance(df, row):
-        distance = np.linalg.norm(df - row, axis=1)
-        return distance.min()
-
-    kmeans_df1 = KMeans(n_clusters=n_clusters, random_state=42).fit(real_df)
+    kmeans_df1 = KMeans(n_clusters=n_clusters, random_state=random_state).fit(real_df)
     cluster_centers_df1 = kmeans_df1.cluster_centers_
 
     # Clustering df2
-    kmeans_df2 = KMeans(n_clusters=n_clusters, random_state=42).fit(syn_df)
+    kmeans_df2 = KMeans(n_clusters=n_clusters, random_state=random_state).fit(syn_df)
     cluster_centers_df2 = kmeans_df2.cluster_centers_
 
     min_distance = np.inf
@@ -60,6 +60,42 @@ def distance_closest_record(real_df, syn_df, n_sample=1000, random_state=0, n_cl
     dcr = df1_selected_cluster.apply(lambda x: compute_distance(df2_selected_cluster, x), axis=1)
 
     return dcr.min()
+
+def compute_distance_with_closest_cluster(row, compare_df, cluster_label, closest_cluster_index, row_index):
+    selected_compare_df = compare_df[cluster_label.labels_ == closest_cluster_index[row_index]]
+    distance = np.linalg.norm(selected_compare_df - row, axis=1)
+    return distance.min()
+
+
+def distance_closest_record_comparison(real_df, syn_df, holdout_df, n_sample=1000, random_state=0, n_clusters=10):
+    real_df = encode_integer(real_df)
+    syn_df = encode_integer(syn_df.sample(n_sample, random_state=random_state)).reset_index(drop=True)
+    holdout_df = encode_integer(holdout_df)
+
+    real_kmeans = KMeans(n_clusters=n_clusters, random_state=random_state).fit(real_df)
+    real_cluster_centers = real_kmeans.cluster_centers_
+
+    holdout_kmeans = KMeans(n_clusters=n_clusters, random_state=random_state).fit(holdout_df)
+    holdout_cluster_centers = holdout_kmeans.cluster_centers_
+
+    real_min_distance = np.zeros(n_sample)
+    for i, real_center in enumerate(real_cluster_centers):
+        distance = np.linalg.norm(real_center - syn_df, axis=1)
+        real_min_distance = np.where(distance < real_min_distance, i, real_min_distance)
+    real_distance = syn_df.apply(lambda x: compute_distance_with_closest_cluster(x, real_df, real_kmeans, real_min_distance, x.name), axis=1)
+
+    holdout_min_distance = np.zeros(n_sample)
+    for i, holdout_center in enumerate(holdout_cluster_centers):
+        distance = np.linalg.norm(holdout_center - syn_df, axis=1)
+        holdout_min_distance = np.where(distance < holdout_min_distance, i, holdout_min_distance)
+    holdout_distance = syn_df.apply(lambda x: compute_distance_with_closest_cluster(x, holdout_df, holdout_kmeans, holdout_min_distance, x.name), axis=1)
+
+    distance_comparison = pd.DataFrame({
+        "distance_to_real": real_distance,
+        "distance_to_holdout": holdout_distance
+    })
+
+    return distance_comparison
 
 class GeneratorReadFromLocal(tapas.generators.Generator):
     def __init__(self, model="AutoDiff", random_state=0, dir="results"):
