@@ -136,8 +136,8 @@ if __name__ == '__main__':
     parser.add_argument('--df_split_ratio', type=float, nargs='+', help='Proportions to split the real data', default=[0.4, 0.4, 0.2])
     parser.add_argument('--sample_size', type=int, help='Sample size for fidelity and privacy metrics', default=2000)
     parser.add_argument('--dir', type=str, help='Directory to save the result', default='results')
-    parser.add_argument('--compute_fidelity', type=bool, help='Compute fidelity metrics', default=True)
-    parser.add_argument('--compute_utility', type=bool, help='Compute utility metrics', default=True)
+    parser.add_argument('--compute_fidelity', type=bool, help='Compute fidelity metrics', default=False)
+    parser.add_argument('--compute_utility', type=bool, help='Compute utility metrics', default=False)
     parser.add_argument('--compute_privacy', type=bool, help='Compute privacy metrics', default=True)
     args = parser.parse_args()
 
