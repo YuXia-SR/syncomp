@@ -27,6 +27,7 @@ def gather_fidelity_info_from_df(df, sample_size=1000, exclude_columns=[]):
     merged_df = df.merge(demographics, on=demographics_columns, how='left'). \
         merge(hierarchy, on=hierarchy_columns, how='left')
     # Extract feature distribution
+    sample_size = min(sample_size, len(merged_df))
     numerical_feature = {
         "visit_prob_per_store": compute_visit_prob_per_store(merged_df, sample_size=sample_size),
         "purchase_prob_per_product": compute_purchase_prob_per_product(merged_df, sample_size=sample_size),
@@ -41,12 +42,7 @@ def gather_fidelity_info_from_df(df, sample_size=1000, exclude_columns=[]):
         "quantity": get_column(merged_df, "quantity", sample_size=sample_size)
     }
     categorical_feature = {
-        "age": get_column(merged_df, "age", sample_size=sample_size),
-        "income": get_column(merged_df, "income", sample_size=sample_size),
-        "household_size": get_column(merged_df, "household_size", sample_size=sample_size),
-        "kids_count": get_column(merged_df, "kids_count", sample_size=sample_size),
-        "product_category": get_column(merged_df, "product_category", sample_size=sample_size),
-        "department": get_column(merged_df, "department", sample_size=sample_size),
+        column: get_column(merged_df, column, sample_size=sample_size) for column in hierarchy_columns + demographics_columns
     }
     categorical_feature_nunique = {
         key: merged_df[key].nunique() for key in categorical_feature.keys()

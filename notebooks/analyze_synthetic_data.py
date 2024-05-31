@@ -16,11 +16,13 @@ from syncomp.metrics.utility import (
     get_classification_training_data,
     train_eval_model
 )
-from syncomp.metrics.privacy import distance_closest_record, evaluate_tapas_attack, distance_closest_record_comparison
+from syncomp.metrics.privacy import distance_closest_record, distance_closest_record_comparison
 from syncomp.utils.holdout_util import split_dataframe
 from syncomp.utils.data_util import CompleteJourneyDataset
 
-logging.getLogger().setLevel(logging.INFO)
+def set_logging():
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logging.getLogger('rdt').setLevel(logging.WARNING)
 
 def main(    
     model: str='AutoDiff',
@@ -32,6 +34,7 @@ def main(
     compute_utility=True,
     compute_privacy=True
 ):
+    set_logging()
 
     # read real df and synthetic df
     cd = CompleteJourneyDataset()
@@ -43,7 +46,7 @@ def main(
     syn_files = os.listdir(f'{dir}/{model}/{random_state}')
     syn_df = []
     for file in syn_files:
-        if file.endswith('.csv'):
+        if file.endswith('.csv') and 'privacy_distance_comparison.csv' not in file:
             df = cd.load_data(f'{dir}/{model}/{random_state}/{file}')
             syn_df.append(df)
     syn_df = pd.concat(syn_df)
@@ -116,25 +119,25 @@ def main(
         logging.info('Skip computing privacy metrics')
     else:
         logging.info('Compute privacy metrics')
-        # dcr = distance_closest_record(train_df, syn_df)
+        dcr = distance_closest_record(train_df, syn_df)
         # tapas_attack = evaluate_tapas_attack(train_df, model, random_state, dir=dir, n_sample=1000, num_training_records=10)
-        distance_comparison = distance_closest_record_comparison(train_df, syn_df, holdout_df)
+        distance_comparison = distance_closest_record_comparison(train_df, syn_df, holdout_df, sample_size=sample_size, random_state=random_state)
 
         distance_comparison.to_csv(f'{dir}/{model}/{random_state}/privacy_distance_comparison.csv', index=False)
         # with open(f'{dir}/{model}/{random_state}/privacy_metrics.pkl', 'wb') as f:
         #     pickle.dump({'dcr': dcr, 'tapas': tapas_attack}, f)
-        # with open(f'{dir}/{model}/{random_state}/privacy_metrics.json', 'w') as f:
-        #     json.dump({'dcr': dcr}, f, indent=4)
+        with open(f'{dir}/{model}/{random_state}/privacy_metrics.json', 'w') as f:
+            json.dump({'dcr': dcr}, f, indent=4)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="A simple program with argparse")
     parser.add_argument('--model', type=str, help='Model to use for generating synthetic data', default='TabAutoDiff')
     parser.add_argument('--random_state', type=int, help='Random state to split the real data', default=0)
     parser.add_argument('--df_split_ratio', type=float, nargs='+', help='Proportions to split the real data', default=[0.4, 0.4, 0.2])
-    parser.add_argument('--sample_size', type=int, help='Sample size for fidelity and privacy metrics', default=1000)
+    parser.add_argument('--sample_size', type=int, help='Sample size for fidelity and privacy metrics', default=2000)
     parser.add_argument('--dir', type=str, help='Directory to save the result', default='results')
-    parser.add_argument('--compute_fidelity', type=bool, help='Compute fidelity metrics', default=False)
-    parser.add_argument('--compute_utility', type=bool, help='Compute utility metrics', default=False)
+    parser.add_argument('--compute_fidelity', type=bool, help='Compute fidelity metrics', default=True)
+    parser.add_argument('--compute_utility', type=bool, help='Compute utility metrics', default=True)
     parser.add_argument('--compute_privacy', type=bool, help='Compute privacy metrics', default=True)
     args = parser.parse_args()
 
