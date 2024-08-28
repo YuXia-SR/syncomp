@@ -9,6 +9,7 @@ import json
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.cluster import KMeans
+from sklearn.preprocessing import OrdinalEncoder
 
 def string_conv_int(x):
     mapping = {v: i for i, v in enumerate(set(x))}
@@ -23,56 +24,41 @@ def encode_integer(df):
 
     return df
 
+# def encode_integer(df, encoder=None):
+#     if encoder is None:
+#         encoder = OrdinalEncoder()
+#         string_columns = df.select_dtypes(include=['object', 'bool']).columns
+#         df[string_columns] = encoder.fit_transform(df[string_columns])
+#     else:
+#         string_columns = encoder.feature_names_in_
+#         df[string_columns] = encoder.transform(df[string_columns])
+#     return df, encoder
+
 def compute_distance(df, row):
-    distance = np.linalg.norm(df - row, axis=1)
+    distance = np.linalg.norm(df - row, axis=1, ord=1)
     return distance.min()
 
-def distance_closest_record(real_df, syn_df, n_sample=1000, random_state=0, n_clusters=10):
-    real_df = real_df.sample(n_sample, random_state=random_state).fillna(0)
-    syn_df = syn_df.fillna(0)
+def dcr_v2(real_df, syn_df):
 
+    # real_df, encoder = encode_integer(real_df)
+    # syn_df, _ = encode_integer(syn_df, encoder=encoder)
     real_df = encode_integer(real_df)
     syn_df = encode_integer(syn_df)
-
-    kmeans_df1 = KMeans(n_clusters=n_clusters, random_state=random_state).fit(real_df)
-    cluster_centers_df1 = kmeans_df1.cluster_centers_
-
-    # Clustering df2
-    kmeans_df2 = KMeans(n_clusters=n_clusters, random_state=random_state).fit(syn_df)
-    cluster_centers_df2 = kmeans_df2.cluster_centers_
-
-    min_distance = np.inf
-    df1_index = 0
-    df2_index = 0
-    for i, center_df1 in enumerate(cluster_centers_df1):
-        for j, center_df2 in enumerate(cluster_centers_df2):
-            distance = np.linalg.norm(center_df1 - center_df2)
-            if distance < min_distance:
-                min_distance = distance
-                df1_index = i
-                df2_index = j
-
-    # Select the cluster centers corresponding to the minimum distance
-    df1_selected_cluster = real_df[kmeans_df1.labels_ == df1_index]
-    df2_selected_cluster = syn_df[kmeans_df2.labels_ == df2_index]
-
-    # Compute the distance between the selected cluster centers
-    dcr = df1_selected_cluster.apply(lambda x: compute_distance(df2_selected_cluster, x), axis=1)
-
-    return dcr.min()
-
-def compute_distance_with_closest_cluster(row, compare_df, cluster_label, closest_cluster_index, row_index):
-    selected_compare_df = compare_df[cluster_label.labels_ == closest_cluster_index[row_index]]
-    distance = np.linalg.norm(selected_compare_df - row, axis=1)
+    
+    distance = syn_df.apply(lambda x: compute_distance(real_df, x), axis=1)
     return distance.min()
 
 
-def distance_closest_record_comparison(real_df, syn_df, holdout_df, sample_size=1000, random_state=0):
+def distance_closest_record_comparison(real_df, syn_df, holdout_df):
     syn_df = syn_df.dropna()
-    sample_size = min(sample_size, syn_df.shape[0])
+    
     real_df = encode_integer(real_df)
-    syn_df = encode_integer(syn_df.sample(sample_size, random_state=random_state)).reset_index(drop=True)
+    syn_df = encode_integer(syn_df)
     holdout_df = encode_integer(holdout_df)
+    # sample_size = min(sample_size, syn_df.shape[0])
+    # real_df, encoder = encode_integer(real_df)
+    # syn_df, _ = encode_integer(syn_df, encoder)
+    # holdout_df, _ = encode_integer(holdout_df, encoder)
 
     real_distance = syn_df.apply(lambda x: compute_distance(real_df, x), axis=1)
     holdout_distance = syn_df.apply(lambda x: compute_distance(holdout_df, x), axis=1)

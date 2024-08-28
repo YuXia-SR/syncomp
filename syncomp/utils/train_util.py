@@ -12,6 +12,7 @@ import syncomp.models.diffusion as diff
 import syncomp.models.TabDDPMdiff as TabDiff
 from syncomp.models.ctab_gan_model.ctabgan import CTABGAN
 from syncomp.models.autogan import train_gan, generate_gan
+from syncomp.models.openai import generate_synthetic_data
 
 def train_tabautodiff(
     train_df: pd.DataFrame,
@@ -307,4 +308,37 @@ def train_autogan(
     gen_output = ds[0](sample, ds[2], ds[3])
     syn_df = pce.convert_to_table(train_df, gen_output, threshold)
 
+    return syn_df
+
+
+def train_openai(
+    train_df: pd.DataFrame,
+    model="gpt-3.5-turbo",
+    max_tokens=4096,
+    chunk_size=200,
+    # Auto-encoder hyper-parameters 
+    threshold = 0.01, # Threshold for mixed-type variables
+    n_epochs = 10, #@param {'type':'integer'}
+    weight_decay = 1e-6, #@param {'type':'number'}
+    lr = 2e-4, #@param {'type':'number'}
+    hidden_size = 250,
+    num_layers = 3,
+    batch_size = 5,
+    **kwargs
+):
+    n_sample = len(train_df)
+    syn_df = []
+    ds = ae.train_autoencoder(train_df, hidden_size, num_layers, lr, weight_decay, n_epochs, batch_size, threshold)
+    latent_features = ds[1].detach()
+    sample = generate_synthetic_data(latent_features, n_sample, model, max_tokens)
+    gen_output = ds[0](sample, ds[2], ds[3])
+    syn_df = pce.convert_to_table(train_df, gen_output, threshold)
+    return syn_df
+
+    # row = 0
+    # while row < n_sample:
+    #     df = generate_synthetic_data(train_df[row:row+batch_size], n_sample, model, max_tokens)
+    #     syn_df.append(df)
+    #     row += batch_size
+    # syn_df = pd.concat(syn_df)
     return syn_df

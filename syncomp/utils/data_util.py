@@ -2,6 +2,8 @@ from completejourney_py import get_data
 import logging
 import numpy as np
 import pandas as pd
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 class CompleteJourneyDataset():
     def __init__(self, threshold_to_remove_products=20, threshold_to_remove_large_trx=100, threshold_to_combine_products=500):
@@ -263,6 +265,8 @@ class CompleteJourneyDataset():
     def load_data(self, path):
         assert path.endswith('.csv'), 'Only csv files are supported'
         data = pd.read_csv(path)
+        data = data.dropna()
+        data['week'] = data['week'].astype('int')
         category_columns = list(data.select_dtypes(include=['object']).columns) + ['week', 'manufacturer_id']
         data[category_columns] = data[category_columns].astype('str')
 

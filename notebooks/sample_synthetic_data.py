@@ -9,7 +9,7 @@ from syncomp.utils.holdout_util import split_dataframe
 from syncomp.utils.train_util import (
     train_tabautodiff, train_ctgan, train_ctabgan, 
     train_stasyautodiff, train_stasy, train_tabddpm,
-    train_autogan
+    train_autogan, train_openai
 )
 
 def set_logging():
@@ -33,7 +33,7 @@ def train_func(department, train_df, train, infrequent_products_hierarchy, infre
     filtered_train_df_reduced = filtered_train_df.drop(columns=unique_cols)
     logging.info(f"Training dataset for department {department}: {filtered_train_df_reduced.shape}")
     filtered_syn_df_reduced = train(filtered_train_df_reduced, device=device)
-    filtered_syn_df = pd.concat([filtered_syn_df_reduced, dropped_cols], axis=1)
+    filtered_syn_df = pd.concat([filtered_syn_df_reduced, dropped_cols], axis=1, ignore_index=True)
     if department == '-1':
         filtered_syn_df = format_infrequent_product_in_synthetic_data(filtered_syn_df, infrequent_products_hierarchy, infrequent_products_weights)
 
@@ -60,6 +60,7 @@ def main(
     infrequent_products_hierarchy = cd.infrequent_products_hierarchy
     infrequent_products_weights = infrequent_products_hierarchy['weights']
     infrequent_products_hierarchy = infrequent_products_hierarchy.drop(columns=['weights'])
+    train_df = train_df.head(5)
 
     logging.info(f'generate one syn_df using {model}')
     if model == 'TabAutoDiff':
@@ -76,6 +77,8 @@ def main(
         train = train_stasy
     elif model == 'AutoGAN':
         train = train_autogan
+    elif model == 'OpenAI':
+        train = train_openai
     else:
         raise NotImplementedError(f"Model {model} not supported yet")
     
@@ -90,11 +93,11 @@ def main(
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="A simple program with argparse")
-    parser.add_argument('--model', type=str, help='Model to use for generating synthetic data', default='TabAutoDiff')
+    parser.add_argument('--model', type=str, help='Model to use for generating synthetic data', default='OpenAI')
     parser.add_argument('--random_state', type=int, help='Random state to split the real data', default=0)
     parser.add_argument('--df_split_ratio', type=float, nargs='+', help='Proportions to split the real data', default=[0.4, 0.4, 0.2])
     parser.add_argument('--dir', type=str, help='Directory to save the result', default='results')
-    parser.add_argument('--n_job', type=int, help='Number of simulation running in parallel', default=5)
+    parser.add_argument('--n_job', type=int, help='Number of simulation running in parallel', default=1)
     parser.add_argument('--device', type=str, help='Device to run the training', default='cpu')
     
     args = parser.parse_args()

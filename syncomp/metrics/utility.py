@@ -1,7 +1,5 @@
 # Importing necessary libraries
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score, f1_score, roc_auc_score, precision_score, recall_score
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -16,7 +14,8 @@ def get_regression_training_data(df):
             'quantity': 'sum',
             'unit_price': 'mean'
             }).reset_index()
-
+    category_columns = agg_df.select_dtypes(include=['object']).columns
+    agg_df[category_columns] = agg_df[category_columns].astype('str')
     y = agg_df['quantity']
     X = agg_df.drop(columns=['quantity', 'week'])
     return X, y
@@ -29,7 +28,8 @@ def get_classification_training_data(df, threshold=10):
             'quantity': 'sum',
             'unit_price': 'mean'
             }).reset_index()
-
+    category_columns = agg_df.select_dtypes(include=['object']).columns
+    agg_df[category_columns] = agg_df[category_columns].astype('str')
     y = (agg_df['quantity'] > threshold).astype(int)
     X = agg_df.drop(columns=['quantity', 'week'])
     return X, y
@@ -38,6 +38,8 @@ def train_eval_model(model, X, y, X_test, y_test, model_type='regression'):
     # Identify numeric and categorical columns
     numeric_cols = X.select_dtypes(include=['number']).columns
     categorical_cols = X.select_dtypes(include=['object']).columns
+    X[categorical_cols] = X[categorical_cols].astype('str')
+    X_test[categorical_cols] = X_test[categorical_cols].astype('str')
 
     # Define preprocessing steps for numeric and categorical data
     numeric_transformer = Pipeline(steps=[

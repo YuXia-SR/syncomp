@@ -1,12 +1,18 @@
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
 
-def plot_heatmap(data, title='', xlabel='', ylabel='', cmap='coolwarm', ax=None, **kwargs):
+def plot_heatmap(data, title='', xlabel='', ylabel='', cmap='coolwarm', ax=None, mask:bool=True, **kwargs):
     ax = ax or plt.gca()
     xticklabels = data.columns
     yticklabels = data.index
-    sns.heatmap(data, cmap=cmap, fmt=".2f", xticklabels=xticklabels, yticklabels=yticklabels, ax=ax, **kwargs)
+    # Getting the Upper Triangle of the co-relation matrix
+    if mask:
+        matrix = np.triu(data)
+    else:
+        matrix = np.zeros_like(data)
+    sns.heatmap(data, cmap=cmap, fmt=".2f", xticklabels=xticklabels, yticklabels=yticklabels, ax=ax, mask=matrix, **kwargs)
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)

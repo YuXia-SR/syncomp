@@ -260,3 +260,8 @@ dmypy.json
 results/*
 AutoDiffusion_code/*
 Real-data/*
+*.out
+*.docx
+*.pptx
+notebooks/figs/*
+*.ipynb
